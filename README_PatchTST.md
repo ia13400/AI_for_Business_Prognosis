@@ -63,7 +63,7 @@ AI_for_Business_Prognosis/
 > [!IMPORTANT]
 > For the Tensorflow notebooks please make sure that you use at least Tensorflow 2.22 on your system.
 > To select the correct version of tensorflow for your  device refer to the tensorflow documentation.
-> Tensorflow versions vary based on  Neural Processing Unit (NPU), Graphics Processing Unit (GPU) and Central Processing Unit (CPU) and the operation system you are using. 
+> Tensorflow versions vary based on  Neural Processing Unit (NPU), Graphics Processing Unit (GPU) and Central Processing Unit (CPU) and the operating system you are using. 
 
 ---
 
