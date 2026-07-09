@@ -16,7 +16,8 @@ AI_for_Business_Prognosis/
     │   ├── PatchTST_Implementierung.ipynb                  # PatchTST implemented with Tensorflow
     │   └── patchtst_teaching_notebook.ipynb                # PatchTST implemented with Pytorch / HuggingFace
     └── Uebung_Notebook/
-        └── patchtst_teaching_notebook.ipynb                # exercise (blank)
+        └── PatchTST_student_exercise.ipynb                 # exercise (blank)
+        └── PatchTST_student_exercise_loesung.ipynb         # solution for the exercise
     └── Training_Examples/
         ├── PatchTST_Beispiel_Training.ipynb                # PatchTST trained on Etth1 Dataset
         ├── PatchTST_Beispiel_Training_Traffic.ipynb        # PatchTST trained on Traffic Dataset
@@ -39,10 +40,9 @@ AI_for_Business_Prognosis/
 
 | Notebook | Description |
 |---|---|
-| `PatchTST_student_exercise.ipynb` | :pencil2: |
+| `PatchTST_student_exercise.ipynb` | Exercise for learning PatchTST |
 | `PatchTST_student_exercise_loesung.ipynb` | Complete solution to the main exercise with explanations. |
-| `PatchTST_student_exercise_bonus.ipynb` | Bonus exercise :pencil2: |
-| `PatchTST_student_exercise_bonus_loesung.ipynb` | Complete solution to the bonus exercise. |
+
 
 ### :clipboard: Other Files - 'Folien' and 'Training_Examples'
 
@@ -158,7 +158,7 @@ A browser tab will open. Navigate to `PatchTST/Lern_Notebook/` or `PatchTST/Uebu
 1. :bookmark: Read the slide deck: `PatchTST/Folien/PatchTST_Folien.pdf`
 2. :bookmark: Work through `PatchTST/Lern_Notebook/patchtst_teaching_notebook.ipynb to understand how PatchTST is trained on the traffic dataset
 3. :bookmark: Work through `PatchTST_Implementierung.ipynb` to learn about the different layers of PatchTST implemented with Tensorflow. The model is trained on synthetic test data.
-4. :bookmark: Attempt `PatchTST/Uebung_Notebook/stl_student_exercise.ipynb` before opening any solution notebooks
+4. :bookmark: Attempt `PatchTST/Uebung_Notebook/PatchTST_student_exercise.ipynb` before opening any solution notebooks
 5. :bookmark: Check your answers against `PatchTST_student_exercise_loesung.ipynb`
 6. :bookmark: Try the bonus exercise in `PatchTST_student_exercise_bonus.ipynb`
 7. :bookmark: (Optional) Get a look into the Training_Examples/ folder to see how the model performs on our selected example datasets. Please note that all notebooks with 'output' in the name are training output files. They are not executable.
