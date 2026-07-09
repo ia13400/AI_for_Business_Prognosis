@@ -19,7 +19,6 @@ AI_for_Business_Prognosis/
         └── PatchTST_student_exercise.ipynb                 # exercise (blank)
         └── PatchTST_student_exercise_loesung.ipynb         # solution for the exercise
     └── Training_Examples/
-        ├── PatchTST_Beispiel_Training.ipynb                # PatchTST trained on Etth1 Dataset
         ├── PatchTST_Beispiel_Training_Traffic.ipynb        # PatchTST trained on Traffic Dataset
         └── PatchTST_Trainingsoutput_Traffic_100.ipynb      # training output for Traffic Dataset
 ```
