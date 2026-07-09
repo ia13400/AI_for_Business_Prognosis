@@ -1,11 +1,11 @@
-# AI for Business Prognosis Details for Implementing PatchTST
+# :thought_balloon: AI for Business Prognosis Details for the PatchTST Structure
 
 An educational notebook environment for learning **PatchTST** as part of an AI for Business Prognosis course. 
 The materials are divided into different parts: lecture slides, teaching notebooks, exercise and training examples. 
 
 ---
 
-## Repository Structure - Substructure for PatchTST only
+## :card_index_dividers: Repository Structure - Substructure for PatchTST only
 
 ```
 AI_for_Business_Prognosis/
@@ -25,9 +25,9 @@ AI_for_Business_Prognosis/
 
 ---
 
-## File Descriptions
+## :card_index_dividers: File Descriptions
 
-### Learning Notebooks — `PatchTST/Lern_Notebook/`
+### :clipboard: Learning Notebooks — `PatchTST/Lern_Notebook/`
 
 | Notebook | Description |
 |---|---|
@@ -35,16 +35,16 @@ AI_for_Business_Prognosis/
 │ `patchtst_teaching_notebook.ipynb` | PatchTST implemented with Pytorch / HuggingFace | 
 
 
-### Exercise Notebooks — `PatchTST/Uebung_Notebook/`
+### :clipboard: Exercise Notebooks — `PatchTST/Uebung_Notebook/`
 
 | Notebook | Description |
 |---|---|
-| `stl_student_exercise.ipynb` | Three-part exercise: (1) decompose monthly car-sales data, (2) explore STL parameters interactively with sliders, (3) apply STL to Apple (AAPL) stock prices and evaluate when STL is appropriate. |
-| `stl_student_exercise_loesung.ipynb` | Complete solution to the main exercise with explanations. |
-| `stl_student_exercise_bonus.ipynb` | Bonus exercise extending the AAPL stock analysis. |
-| `stl_student_exercise_bonus_loesung.ipynb` | Complete solution to the bonus exercise. |
+| `PatchTST_student_exercise.ipynb` | :pencil2: |
+| `PatchTST_student_exercise_loesung.ipynb` | Complete solution to the main exercise with explanations. |
+| `PatchTST_student_exercise_bonus.ipynb` | Bonus exercise :pencil2: |
+| `PatchTST_student_exercise_bonus_loesung.ipynb` | Complete solution to the bonus exercise. |
 
-### Other Files - 'Folien' and 'Trainig_Examples'
+### :clipboard: Other Files - 'Folien' and 'Training_Examples'
 
 | File | Description |
 |---|---|
@@ -55,7 +55,7 @@ AI_for_Business_Prognosis/
 
 ---
 
-## Requirements
+## :gear: Requirements
 
 - **Python 3.11** or newer
 - **uv** package manager
@@ -67,9 +67,9 @@ AI_for_Business_Prognosis/
 
 ---
 
-## Step-by-Step Setup
+## :hammer_and_wrench: Step-by-Step Setup
 
-### Step 1 — Install uv
+### :hammer: Step 1 — Install uv
 
 uv is a fast Python package and project manager. Install it once on your machine.
 
@@ -100,7 +100,7 @@ uv --version
 
 ---
 
-### Step 2 — Create the project environment
+### :hammer: Step 2 — Create the project environment
 
 Open a terminal in the project root folder and run:
 
@@ -112,7 +112,7 @@ uv sync
 
 ---
 
-### Step 3 — Register the Jupyter kernel
+### :hammer: Step 3 — Register the Jupyter kernel
 
 Register the project environment as a kernel so VS Code and Jupyter can find it:
 
@@ -124,9 +124,9 @@ This step only needs to be done **once**.
 
 ---
 
-## Running the Notebooks
+## :car: Running the Notebooks
 
-### Option A — VS Code (recommended)
+### :wheel: Option A — VS Code (recommended)
 
 1. Open the project folder in VS Code.
 2. Install the **Jupyter** extension if it is not already installed.
@@ -134,7 +134,7 @@ This step only needs to be done **once**.
 4. Click **Select Kernel** in the top-right corner and choose **AI for Business Prognosis**.
 5. Run cells with `Shift+Enter` or use **Run All** from the toolbar.
 
-### Option B — Jupyter in the browser
+### :wheel: Option B — Jupyter in the browser
 
 If you prefer the classic Jupyter interface, first add the `notebook` package:
 
