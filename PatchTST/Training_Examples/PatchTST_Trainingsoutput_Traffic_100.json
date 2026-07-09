@@ -199,5 +199,3 @@ Epoch 99/100
 [1m53/53[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m92s[0m 2s/step - loss: 0.2011 - mae: 0.2501
 Epoch 100/100
 [1m53/53[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m91s[0m 2s/step - loss: 0.1992 - mae: 0.2489
-
-✔ Modell Test erfolgreich, Dimensionen des Modells passen.
