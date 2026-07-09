@@ -33,7 +33,7 @@ AI_for_Business_Prognosis/
 | Notebook | Description |
 |---|---|
 │ `PatchTST_Implementierung.ipynb` | PatchTST implemented with Tensorflow | 
-│ `patchtst_teaching_notebook.ipynb` | PatchTST implemented with Pytorch / HuggingFace | 
+│ `patchtst_teaching_notebook.ipynb` | PatchTST implemented with PyTorch / HuggingFace | 
 
 
 ### :clipboard: Exercise Notebooks — `PatchTST/Uebung_Notebook/`
@@ -41,7 +41,7 @@ AI_for_Business_Prognosis/
 | Notebook | Description |
 |---|---|
 | `PatchTST_student_exercise.ipynb` | Exercise for learning PatchTST |
-| `PatchTST_student_exercise_loesung.ipynb` | Complete solution to the main exercise with explanations. |
+| `PatchTST_student_exercise_loesung.ipynb` | Complete solution to the exercise with explanations. |
 
 
 ### :clipboard: Other Files - 'Folien' and 'Training_Examples'
@@ -49,9 +49,8 @@ AI_for_Business_Prognosis/
 | File | Description |
 |---|---|
 | `PatchTST/Folien/PatchTST_Folien.pdf` | Lecture slide deck covering PatchTST theory.|
-| `PatchTST/Training_Examples/PatchTST_Beispiel_Training.ipynb` |PatchTST trained on Etth1 Dataset |
 | `PatchTST/Training_Examples/PatchTST_Beispiel_Training_Traffic.ipynb` |PatchTST trained on Traffic Dataset |
-| `PatchTST/Training_Examples/PatchTST_Trainingsoutput_Traffic_100.ipynb` |training output for Traffic Dataset |
+| `PatchTST/Training_Examples/PatchTST_Trainingsoutput_Traffic_100.json` |training output for Traffic Dataset |
 
 ---
 
@@ -156,10 +155,9 @@ A browser tab will open. Navigate to `PatchTST/Lern_Notebook/` or `PatchTST/Uebu
 ## :books: Suggested Learning Path
 
 1. :bookmark: Read the slide deck: `PatchTST/Folien/PatchTST_Folien.pdf`
-2. :bookmark: Work through `PatchTST/Lern_Notebook/patchtst_teaching_notebook.ipynb to understand how PatchTST is trained on the traffic dataset
-3. :bookmark: Work through `PatchTST_Implementierung.ipynb` to learn about the different layers of PatchTST implemented with Tensorflow. The model is trained on synthetic test data.
+2. :bookmark: Work through `PatchTST/Lern_Notebook/patchtst_teaching_notebook.ipynb` to understand how PatchTST is trained on the traffic dataset
+3. :bookmark: Work through `PatchTST_Implementierung.ipynb` to learn about the different layers of PatchTST implemented with Tensorflow. The model is trained on a synthetic data set.
 4. :bookmark: Attempt `PatchTST/Uebung_Notebook/PatchTST_student_exercise.ipynb` before opening any solution notebooks
 5. :bookmark: Check your answers against `PatchTST_student_exercise_loesung.ipynb`
-6. :bookmark: Try the bonus exercise in `PatchTST_student_exercise_bonus.ipynb`
-7. :bookmark: (Optional) Get a look into the Training_Examples/ folder to see how the model performs on our selected example datasets. Please note that all notebooks with 'output' in the name are training output files. They are not executable.
+6. :bookmark: (Optional) Take a look into the Training_Examples/ folder to see how the model performs on a larger typical timeseries dataset. Please note that the json file located in the directory is not executable.
 
