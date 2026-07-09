@@ -16,7 +16,8 @@ AI_for_Business_Prognosis/
     │   ├── PatchTST_Implementierung.ipynb                  # PatchTST implemented with Tensorflow
     │   └── patchtst_teaching_notebook.ipynb                # PatchTST implemented with Pytorch / HuggingFace
     └── Uebung_Notebook/
-        └── patchtst_teaching_notebook.ipynb                # exercise (blank)
+        └── PatchTST_student_exercise.ipynb`                # exercise (blank)
+        └── PatchTST_student_exercise_loesung.ipynb         # solution for the exercise
     └── Training_Examples/
         ├── PatchTST_Beispiel_Training.ipynb                # PatchTST trained on Etth1 Dataset
         ├── PatchTST_Beispiel_Training_Traffic.ipynb        # PatchTST trained on Traffic Dataset
@@ -39,10 +40,9 @@ AI_for_Business_Prognosis/
 
 | Notebook | Description |
 |---|---|
-| `PatchTST_student_exercise.ipynb` | :pencil2: |
+| `PatchTST_student_exercise.ipynb` | Exercise for learning PatchTST |
 | `PatchTST_student_exercise_loesung.ipynb` | Complete solution to the main exercise with explanations. |
-| `PatchTST_student_exercise_bonus.ipynb` | Bonus exercise :pencil2: |
-| `PatchTST_student_exercise_bonus_loesung.ipynb` | Complete solution to the bonus exercise. |
+
 
 ### :clipboard: Other Files - 'Folien' and 'Training_Examples'
 
