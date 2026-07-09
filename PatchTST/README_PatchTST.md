@@ -11,10 +11,10 @@ The materials are divided into different parts: lecture slides, teaching noteboo
 AI_for_Business_Prognosis/
 └── PatchTST/
     ├── Folien/
-    │   └── PatchTST_Folien.pdf                             # PatchTST lecture slides
+        └── PatchTST_Folien.pdf                             # PatchTST lecture slides
     ├── Lern_Notebook/
-    │   ├── PatchTST_Implementierung.ipynb                  # PatchTST implemented with Tensorflow
-    │   └── patchtst_teaching_notebook.ipynb                # PatchTST implemented with Pytorch / HuggingFace
+        ├── PatchTST_Implementierung.ipynb                  # PatchTST implemented with Tensorflow
+        └── patchtst_teaching_notebook.ipynb                # PatchTST implemented with Pytorch / HuggingFace
     └── Uebung_Notebook/
         └── PatchTST_student_exercise.ipynb                 # exercise (blank)
         └── PatchTST_student_exercise_loesung.ipynb         # solution for the exercise
