@@ -14,7 +14,7 @@ AI_for_Business_Prognosis/
         └── PatchTST_Folien.pdf                             # PatchTST lecture slides
     ├── Lern_Notebook/
         ├── PatchTST_Implementierung.ipynb                  # PatchTST implemented with Tensorflow
-        └── patchtst_teaching_notebook.ipynb                # PatchTST implemented with Pytorch / HuggingFace
+        └── patchtst_teaching_notebook.ipynb                # PatchTST implemented with PyTorch
     └── Uebung_Notebook/
         └── PatchTST_student_exercise.ipynb                 # exercise (blank)
         └── PatchTST_student_exercise_loesung.ipynb         # solution for the exercise
@@ -41,7 +41,7 @@ AI_for_Business_Prognosis/
 | Notebook | Description |
 |---|---|
 │ `PatchTST_Implementierung.ipynb` | PatchTST implemented with Tensorflow | 
-│ `patchtst_teaching_notebook.ipynb` | PatchTST implemented with PyTorch / HuggingFace | 
+│ `patchtst_teaching_notebook.ipynb` | PatchTST implemented with PyTorch | 
 
 
 ### :clipboard: Exercise Notebooks — `PatchTST/Uebung_Notebook/`
