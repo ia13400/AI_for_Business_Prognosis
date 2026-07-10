@@ -18,6 +18,15 @@ AI_for_Business_Prognosis/
     └── Uebung_Notebook/
         └── PatchTST_student_exercise.ipynb                 # exercise (blank)
         └── PatchTST_student_exercise_loesung.ipynb         # solution for the exercise
+        └── data /
+            └── weather.csv                                 # weather data set for the exercise
+        └── trained_models_loesung /                        
+            └── model_context_336_pred_48.pt                # trained modell example
+            └── model_context_336_pred_24.pt                # trained modell example
+            └── model_context_168_pred_48.pt                # trained modell example
+            └── model_context_168_pred_24.pt                # trained modell example
+            └── learning_curves.pt                          # learning curve
+        └── trained_models_exercise /                       # A place for your trained models
     └── Training_Examples/
         ├── PatchTST_Beispiel_Training_Traffic.ipynb        # PatchTST trained on Traffic Dataset
         └── PatchTST_Trainingsoutput_Traffic_100.ipynb      # training output for Traffic Dataset
@@ -41,6 +50,13 @@ AI_for_Business_Prognosis/
 |---|---|
 | `PatchTST_student_exercise.ipynb` | Exercise for learning PatchTST |
 | `PatchTST_student_exercise_loesung.ipynb` | Complete solution to the exercise with explanations. |
+| `data/weather.csv` | weather data set for the exercise  |
+| `trained_models_loesung/model_context_336_pred_48.pt` | trained modell example |
+| `trained_models_loesung/model_context_336_pred_24.pt` | trained modell example |
+| `trained_models_loesung/model_context_168_pred_48.pt` | trained modell example |
+| `trained_models_loesung/model_context_168_pred_24.pt` | trained modell example |
+| `trained_models_loesung/learning_curves.pt` | learning curve |
+| `trained_models_exercise/` | A folder where your trained models belong |
 
 
 ### :clipboard: Other Files - 'Folien' and 'Training_Examples'
