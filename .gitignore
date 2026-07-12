@@ -1,1 +1,10 @@
 .venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+Gold_Price_Prognosis/data/raw/*
+Gold_Price_Prognosis/data/interim/*
+Gold_Price_Prognosis/data/processed/*
+Gold_Price_Prognosis/data/metadata/*
+Gold_Price_Prognosis/artifacts/*
+!Gold_Price_Prognosis/**/.gitkeep

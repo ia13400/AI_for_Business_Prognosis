@@ -1,7 +1,7 @@
 [project]
 name = "ai-for-business-prognosis"
 version = "0.1.0"
-description = "Educational notebook environment for STL (Seasonal and Trend decomposition using LOESS) in a business prognosis context."
+description = "Educational forecasting environment for STL, PatchTST, and reproducible gold-price forecasting."
 requires-python = ">=3.11"
 dependencies = [
     "ipykernel>=6.29.0",
@@ -13,7 +13,19 @@ dependencies = [
     "statsmodels>=0.14.0",
     "torch>=2.3.0",
     "yfinance>=1.4.1",
+    "pyarrow>=16.0.0",
+    "pyyaml>=6.0.1",
+    "tqdm>=4.66.0",
+    "mlflow>=2.14.0",
+    "streamlit>=1.36.0",
+    "plotly>=5.22.0",
+    "pytest>=8.2.0",
+    "jupyter>=1.0.0",
 ]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["Gold_Price_Prognosis/src"]
+testpaths = ["Gold_Price_Prognosis/tests"]

@@ -1,0 +1,38 @@
+seed: 42
+naive: {}
+arima:
+  order: [5, 1, 0]
+lstm:
+  context_length: 60
+  hidden_size: 32
+  num_layers: 1
+  dropout: 0.0
+  learning_rate: 0.001
+  batch_size: 64
+  epochs: 30
+  patience: 5
+nbeats:
+  context_length: 60
+  hidden_size: 64
+  blocks: 3
+  learning_rate: 0.001
+  batch_size: 64
+  epochs: 30
+  patience: 5
+patchtst:
+  context_length: 64
+  patch_length: 8
+  stride: 4
+  d_model: 32
+  nhead: 4
+  layers: 2
+  learning_rate: 0.001
+  batch_size: 64
+  epochs: 30
+  patience: 5
+quick_mode:
+  epochs: 2
+  patience: 1
+  hidden_size: 16
+  d_model: 16
+full_mode: {}

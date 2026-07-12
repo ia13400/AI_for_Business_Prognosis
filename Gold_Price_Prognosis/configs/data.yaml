@@ -1,0 +1,18 @@
+source: yahoo
+start: "2000-01-01"
+end: null
+target_symbol: "GC=F"
+target_column: gold_usd
+frequency: B
+exogenous:
+  dollar_index: "DX-Y.NYB"
+  silver: "SI=F"
+  oil: "CL=F"
+  sp500: "^GSPC"
+  vix: "^VIX"
+  bitcoin: "BTC-USD"
+features:
+  lags: [1, 2, 5, 10, 20]
+  rolling_windows: [5, 20]
+  include_calendar: true
+  include_exogenous: false
