@@ -1,0 +1,63 @@
+{
+  "signature": "8b5fd8da0819fc8deb33a6015893a06aba7605f1d4269785fed11924aff20a2d",
+  "inputs": {
+    "namespace": "multivariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "xgboost_diff",
+    "hyperparameters": {
+      "params": {
+        "max_depth": 10,
+        "learning_rate": 0.04773810256128752,
+        "n_estimators": 103,
+        "subsample": 0.9903324566798157,
+        "colsample_bytree": 0.9946994595670489
+      },
+      "retrain_each_step": true,
+      "seed": 42
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2014-09-17 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "multivariate-known-exogenous-backtest-return-target",
+    "exogenous_columns": [
+      "dollar_index",
+      "silver",
+      "oil",
+      "sp500",
+      "vix",
+      "bitcoin"
+    ],
+    "feature_config": {
+      "lags": [
+        1,
+        2,
+        5,
+        10,
+        20
+      ],
+      "rolling_windows": [
+        5,
+        20
+      ],
+      "include_calendar": true,
+      "exogenous_lag": 1
+    },
+    "mlflow_run_id": "59fd1333da32471e8ed7036103350522",
+    "runtime_seconds": 559.6814209999284
+  },
+  "best_params": {
+    "max_depth": 10,
+    "learning_rate": 0.04773810256128752,
+    "n_estimators": 103,
+    "subsample": 0.9903324566798157,
+    "colsample_bytree": 0.9946994595670489
+  }
+}

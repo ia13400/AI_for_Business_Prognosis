@@ -68,7 +68,7 @@ def _experiment_tab(namespace: str, description: str, future_enabled: bool):
 
 with tabs[0]:
     st.subheader("Projektüberblick")
-    st.write("Zielvariable: täglicher Goldpreis in USD je Feinunze. Experiment 1 (univariat, ohne exogene Variablen): SARIMA, PatchTST, Chronos (Original & Bolt, Zero-Shot). Experiment 2 (multivariat, mit exogenen Variablen): SARIMAX, XGBoost, TFT (nativ, kompakt).")
+    st.write("Zielvariable: täglicher Goldpreis in USD je Feinunze. Experiment 1 (univariat, ohne exogene Variablen): SARIMA, PatchTST, Chronos (Original & Bolt, Zero-Shot). Experiment 2 (multivariat, mit exogenen Variablen): SARIMAX, XGBoost (Preisniveau), XGBoost (Differenzen), TFT (nativ, kompakt).")
     st.write("Validierungs- und Testzeitraum sind je 1 Jahr lang; die Auswertung erfolgt rollierend (walk-forward, Standard: 20 Tage Horizont, 20 Tage Schritt). Alle Werte sind in `configs/experiments.yaml` (`split`, `rolling`) konfigurierbar; das Enddatum der heruntergeladenen Daten steht in `configs/data.yaml`.")
     if data is None: st.info("Bitte zuerst Daten herunterladen und Experimente ausführen.")
     else:
@@ -81,5 +81,5 @@ with tabs[1]:
 with tabs[2]:
     _experiment_tab("univariate","Experiment 1: Prognose ohne exogene Variablen (SARIMA, PatchTST, Chronos) gegen Naiv und gleitenden Durchschnitt.",future_enabled=True)
 with tabs[3]:
-    _experiment_tab("multivariate","Experiment 2: Prognose mit exogenen Variablen aus data.yaml (SARIMAX, XGBoost, TFT). Rückblickender Test mit tatsächlich realisierten exogenen Werten (kein unbekannt-zukünftiges Szenario).",future_enabled=False)
+    _experiment_tab("multivariate","Experiment 2: Prognose mit exogenen Variablen aus data.yaml (SARIMAX, XGBoost, XGBoost-Differenzen, TFT). Rückblickender Test mit tatsächlich realisierten exogenen Werten (kein unbekannt-zukünftiges Szenario). XGBoost (Differenzen) sagt Renditen statt Preisniveaus vorher -- siehe Notebook Kapitel 4.2 fuer die Begruendung.",future_enabled=False)
 with tabs[4]: st.write("Lokale Oberfläche starten: `uv run python scripts/launch_mlflow.py`. Tracking-Daten liegen unter `artifacts/mlflow/`.")

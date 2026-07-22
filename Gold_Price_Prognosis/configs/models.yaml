@@ -92,6 +92,26 @@ xgboost:
     subsample: 0.8
     colsample_bytree: 0.8
 
+# Same features/search space as `xgboost` above, but predicts the next-step
+# return instead of the raw price level (see models/xgboost_diff.py) --
+# trees can't extrapolate a price-level trend the way SARIMAX/neural nets can,
+# so this variant is kept and compared side by side rather than replacing it.
+xgboost_diff:
+  enabled: true
+  retrain_each_step: true
+  search_space:
+    max_depth: [3, 10]
+    learning_rate: [0.01, 0.3]
+    n_estimators: [100, 600]
+    subsample: [0.5, 1.0]
+    colsample_bytree: [0.5, 1.0]
+  fallback:
+    max_depth: 5
+    learning_rate: 0.05
+    n_estimators: 300
+    subsample: 0.8
+    colsample_bytree: 0.8
+
 tft:
   enabled: true
   context_length: 64

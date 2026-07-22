@@ -9,6 +9,7 @@ from gold_forecasting.models.sarimax import SarimaxForecaster
 from gold_forecasting.models.patchtst import PatchTSTForecaster
 from gold_forecasting.models.tft import TFTForecaster
 from gold_forecasting.models.xgboost_model import XGBoostForecaster
+from gold_forecasting.models.xgboost_diff import XGBoostDiffForecaster
 
 INDEX = pd.bdate_range("2023-01-01", periods=100)
 SERIES = pd.Series(100 + np.sin(np.arange(100)/5) + np.arange(100)*.1, index=INDEX)
@@ -56,6 +57,18 @@ def test_xgboost_forecast_window_across_rolling_calls(retrain_each_step):
     expected_calls = 2 if retrain_each_step else 1
     assert len(instance.loss_history["train"]) == 30 * expected_calls
     assert len(instance.loss_history["validation"]) == len(instance.loss_history["train"])
+
+@pytest.mark.parametrize("retrain_each_step", [True, False])
+def test_xgboost_diff_forecast_window_across_rolling_calls(retrain_each_step):
+    set_seed(42)
+    feature_config = {"lags": [1, 2, 5], "rolling_windows": [5], "include_calendar": True, "exogenous_lag": 1}
+    instance = XGBoostDiffForecaster(config={"params": {"max_depth": 3, "learning_rate": .2, "n_estimators": 30, "subsample": 1.0, "colsample_bytree": 1.0}, "retrain_each_step": retrain_each_step}, feature_config=feature_config)
+    first = instance.forecast_window(MULTI.iloc[:80], 3, future_exogenous=EXOG.iloc[80:83].values)
+    second = instance.forecast_window(MULTI.iloc[:90], 3, future_exogenous=EXOG.iloc[90:93].values)
+    assert first.shape == (3,) and second.shape == (3,)
+    assert np.isfinite(first).all() and np.isfinite(second).all()
+    # reconstructed absolute forecasts should stay in the same ballpark as the series, not diverge wildly
+    assert np.all(np.abs(first - SERIES.iloc[80]) < 50) and np.all(np.abs(second - SERIES.iloc[90]) < 50)
 
 def test_patchtst_forecast_window_warm_start():
     set_seed(42)
