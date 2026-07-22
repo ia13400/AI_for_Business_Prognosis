@@ -5,7 +5,7 @@ import mlflow
 from .paths import MLFLOW
 
 def configure_mlflow(experiment_type: str) -> None:
-    MLFLOW.mkdir(parents=True,exist_ok=True); mlflow.set_tracking_uri(MLFLOW.resolve().as_uri()); mlflow.set_experiment(f"gold-{experiment_type}")
+    MLFLOW.mkdir(parents=True,exist_ok=True); mlflow.set_tracking_uri(f"sqlite:///{(MLFLOW / 'mlflow.db').resolve().as_posix()}"); mlflow.set_experiment(f"gold-{experiment_type}")
 
 @contextmanager
 def tracked_run(model: str, experiment_type: str, tags: dict, cached_run_id: str | None = None):
