@@ -3,13 +3,19 @@
 Variable-selection gating -> LSTM encoder -> single multi-head self-attention
 block -> gated residual output head. A lightweight approximation of the
 Temporal Fusion Transformer, consistent with this project's native PyTorch
-implementations (no pytorch-forecasting/lightning dependency). The recursive
-multi-step test forecast uses the test period's actual exogenous values, the
-same "known-exogenous" backtest assumption documented in `sarimax.py`.
+implementations (no pytorch-forecasting/lightning dependency). Optuna HPO is
+scored over rolling-origin validation windows; the neural warm-start/
+retrain-each-step machinery lives in `NeuralForecaster` (`base.py`) and
+applies identically here. The recursive per-window forecast uses that
+window's actual exogenous values, the same "known-exogenous" backtest
+assumption documented in `sarimax.py`.
 """
+import numpy as np
+import pandas as pd
 from torch import nn
 from .base import NeuralForecaster
 from ..hpo import run_study
+from ..rolling import rolling_forecast
 from ..paths import OPTUNA
 
 class _VariableSelection(nn.Module):
@@ -51,25 +57,36 @@ def _sample_config(trial, context_length, space):
         "batch_size": trial.suggest_int("batch_size", *space["batch_size"], step=32),
     }
 
-def run_tft(train, validation, test, config, hpo, data_hash, seed, force_retrain=False, evaluation_horizons=(1, 7, 30)):
+def run_tft(train, validation, test, config, hpo, data_hash, seed, horizon, step, force_retrain=False, lead_time_checkpoints=(1, 10, 20)):
     """Multivariate TFT-lite: train/validation/test are DataFrames with the target as column 0."""
-    from ..experiments import run_model
+    from ..experiments import run_rolling_model
     from ..config import select_device
     device = select_device(); context_length = int(config["context_length"]); space = config.get("search_space")
     n_features = train.shape[1]; trials = int(hpo.get("n_trials", 0))
+    retrain_each_step = bool(config.get("retrain_each_step", True))
+    update_epochs = int(hpo.get("update_epochs", max(1, int(hpo["epochs"]) // 10)))
+    study = None
     if trials and space:
+        combined_tv = pd.concat([train, validation])
+        validation_start, validation_end = len(train), len(train) + len(validation)
         def objective(trial):
-            trial_config = {**_sample_config(trial, context_length, space), "epochs": hpo["epochs"], "patience": hpo["patience"]}
+            trial_config = {**_sample_config(trial, context_length, space), "epochs": hpo["epochs"], "patience": hpo["patience"],
+                             "retrain_each_step": retrain_each_step, "update_epochs": update_epochs}
             model = TFTForecaster(config=trial_config, device=device, seed=seed, n_features=n_features)
-            model.fit(train, validation, checkpoint_path=None)
-            return min(model.loss_history["validation"]) if model.loss_history["validation"] else float("inf")
+            result = rolling_forecast(model, combined_tv, validation_start, validation_end, horizon, step)
+            return float(np.mean(np.abs(result["actual"] - result["predicted"])))
         study = run_study(f"tft_{data_hash[:12]}", objective, trials, OPTUNA, seed=seed, timeout=hpo.get("timeout"))
         best = dict(study.best_params); best["hidden_size"] = _round_hidden_size(best["hidden_size"], best["attention_heads"])
-        model_config = {"context_length": context_length, **best, "epochs": hpo["epochs"], "patience": hpo["patience"]}
+        model_config = {"context_length": context_length, **best, "epochs": hpo["epochs"], "patience": hpo["patience"],
+                         "retrain_each_step": retrain_each_step, "update_epochs": update_epochs}
     else:
-        model_config = {"context_length": context_length, **config.get("fallback", {}), "epochs": hpo["epochs"], "patience": hpo["patience"]}
-    model = TFTForecaster(config=model_config, device=device, seed=seed, n_features=n_features); model.best_params = model_config
+        model_config = {"context_length": context_length, **config.get("fallback", {}), "epochs": hpo["epochs"], "patience": hpo["patience"],
+                         "retrain_each_step": retrain_each_step, "update_epochs": update_epochs}
+    def build(checkpoint_path):
+        model = TFTForecaster(config=model_config, device=device, seed=seed, n_features=n_features, checkpoint_path=checkpoint_path)
+        model.best_params = model_config
+        return model
     meta = {"train_range": f"{train.index.min()}:{train.index.max()}", "validation_range": f"{validation.index.min()}:{validation.index.max()}",
-            "test_range": f"{test.index.min()}:{test.index.max()}", "evaluation_horizons": list(evaluation_horizons),
+            "test_range": f"{test.index.min()}:{test.index.max()}", "lead_time_checkpoints": list(lead_time_checkpoints),
             "approach": "multivariate-known-exogenous-backtest", "exogenous_columns": list(train.columns[1:])}
-    return run_model(model, "tft", train, validation, test, "multivariate", data_hash, model_config, seed, meta, force_retrain)
+    return run_rolling_model(build, "tft", train, validation, test, "multivariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study)

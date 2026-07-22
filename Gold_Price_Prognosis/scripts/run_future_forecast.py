@@ -1,4 +1,8 @@
-"""Run univariate future forecasts without unknown future covariates (Experiment 1 models only)."""
+"""Run univariate future forecasts without unknown future covariates (Experiment 1 models only).
+
+Uses each model's fallback configuration (no HPO) -- a fast, one-shot genuine
+future forecast beyond the downloaded data's end, not a rolling evaluation.
+"""
 import argparse
 import sys
 from pathlib import Path
@@ -26,10 +30,10 @@ def main():
     full_series = data["gold_usd"].dropna()
 
     models = {
-        "sarima": SarimaForecaster(config=models_config["sarima"]),
-        "patchtst": PatchTSTForecaster(config={"context_length": models_config["patchtst"]["context_length"], **models_config["patchtst"]["fallback"], "epochs": hpo["epochs"], "patience": hpo["patience"]}, device=device, seed=seed),
-        "chronos_original": ChronosForecaster(config={"model_id": models_config["chronos"]["variants"]["original"]}, device=device),
-        "chronos_bolt": ChronosForecaster(config={"model_id": models_config["chronos"]["variants"]["bolt"]}, device=device),
+        "sarima": SarimaForecaster(config={"order": models_config["sarima"]["fallback"]["order"], "seasonal_period": models_config["sarima"].get("seasonal_period", 0), "retrain_each_step": False}),
+        "patchtst": PatchTSTForecaster(config={"context_length": models_config["patchtst"]["context_length"], **models_config["patchtst"]["fallback"], "epochs": hpo["epochs"], "patience": hpo["patience"], "retrain_each_step": False}, device=device, seed=seed),
+        "chronos_original": ChronosForecaster(config={"model_id": models_config["chronos"]["variants"]["original"], "context_length": models_config["chronos"].get("context_length", 512)}, device=device),
+        "chronos_bolt": ChronosForecaster(config={"model_id": models_config["chronos"]["variants"]["bolt"], "context_length": models_config["chronos"].get("context_length", 512)}, device=device),
     }
     for name, model in models.items():
         forecast = run_future(model, name, full_series, args.horizon, data_hash, seed, {"approach": "univariate-future"}, args.force_retrain)

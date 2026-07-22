@@ -1,11 +1,14 @@
 seed: 42
 
 # quick_mode keeps HPO trial counts and neural epoch budgets small for fast
-# iteration/CI; full_mode is the production-quality budget. Both are
-# configurable here and selected via experiments.yaml: mode.
+# iteration/CI; full_mode is the production-quality budget (now the default).
+# Both are configurable here and selected via experiments.yaml: mode.
+# update_epochs is the warm-start continuation budget PatchTST/TFT use at
+# every rolling window after the first (see models/base.py); it also scales
+# with mode so quick_mode's rolling evaluation stays fast end to end.
 hpo:
-  quick_mode: {n_trials: 3, epochs: 3, patience: 2, timeout: null}
-  full_mode: {n_trials: 25, epochs: 60, patience: 8, timeout: null}
+  quick_mode: {n_trials: 3, epochs: 3, patience: 2, timeout: null, update_epochs: 1}
+  full_mode: {n_trials: 25, epochs: 60, patience: 8, timeout: null, update_epochs: 5}
 
 naive: {}
 
@@ -16,6 +19,7 @@ moving_average:
 
 sarima:
   seasonal_period: 0 # 0 disables the seasonal component
+  retrain_each_step: true # full refit from scratch at every rolling window
   search_space:
     p: [0, 4]
     d: [0, 2]
@@ -25,6 +29,7 @@ sarima:
 
 patchtst:
   context_length: 64
+  retrain_each_step: true # warm-start continuation at every rolling window after the first (update_epochs budget set per-mode in hpo: above)
   search_space:
     patch_length: [4, 16]
     stride: [2, 8]
@@ -43,6 +48,7 @@ patchtst:
     batch_size: 64
 
 chronos:
+  context_length: 512 # tail-truncation of available history handed to the pretrained pipeline each window
   variants:
     original: "amazon/chronos-t5-small"
     bolt: "amazon/chronos-bolt-small"
@@ -51,6 +57,7 @@ chronos:
 
 sarimax:
   seasonal_period: 0
+  retrain_each_step: true
   search_space:
     p: [0, 3]
     d: [0, 2]
@@ -59,6 +66,7 @@ sarimax:
     order: [2, 1, 2]
 
 xgboost:
+  retrain_each_step: true
   search_space:
     max_depth: [3, 10]
     learning_rate: [0.01, 0.3]
@@ -74,6 +82,7 @@ xgboost:
 
 tft:
   context_length: 64
+  retrain_each_step: true # update_epochs budget set per-mode in hpo: above
   search_space:
     hidden_size: [16, 64]
     attention_heads: [1, 4]

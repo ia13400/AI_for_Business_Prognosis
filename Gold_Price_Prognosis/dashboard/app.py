@@ -26,7 +26,7 @@ def _experiment_tab(namespace: str, description: str, future_enabled: bool):
     st.subheader("Modellvergleich (Testzeitraum)")
     st.dataframe(metrics.sort_values(["horizon","mae"]) if not metrics.empty else metrics)
     selected=st.selectbox("Modell",files,format_func=lambda p:p.stem,key=f"{namespace}_model")
-    prediction=pd.read_csv(selected,index_col=0,parse_dates=True)
+    prediction=pd.read_csv(selected,parse_dates=["date"]).set_index("date")[["actual","predicted"]]
     st.line_chart(prediction)
     st.download_button("Prognose herunterladen",prediction.to_csv().encode(),selected.name,"text/csv",key=f"{namespace}_download")
     if "actual" in prediction.columns and "predicted" in prediction.columns:
@@ -47,7 +47,7 @@ def _experiment_tab(namespace: str, description: str, future_enabled: bool):
 with tabs[0]:
     st.subheader("Projektüberblick")
     st.write("Zielvariable: täglicher Goldpreis in USD je Feinunze. Experiment 1 (univariat, ohne exogene Variablen): SARIMA, PatchTST, Chronos (Original & Bolt, Zero-Shot). Experiment 2 (multivariat, mit exogenen Variablen): SARIMAX, XGBoost, TFT (nativ, kompakt).")
-    st.write("Validierungs- und Testzeitraum sind je 2.5 Jahre lang und in `configs/experiments.yaml` konfigurierbar; das Enddatum der heruntergeladenen Daten steht in `configs/data.yaml`.")
+    st.write("Validierungs- und Testzeitraum sind je 1 Jahr lang; die Auswertung erfolgt rollierend (walk-forward, Standard: 20 Tage Horizont, 20 Tage Schritt). Alle Werte sind in `configs/experiments.yaml` (`split`, `rolling`) konfigurierbar; das Enddatum der heruntergeladenen Daten steht in `configs/data.yaml`.")
     if data is None: st.info("Bitte zuerst Daten herunterladen und Experimente ausführen.")
     else:
         c1,c2,c3=st.columns(3); c1.metric("Beginn",str(data.index.min().date())); c2.metric("Ende",str(data.index.max().date())); c3.metric("Letzter Preis",f"{data.gold_usd.iloc[-1]:,.2f} USD")

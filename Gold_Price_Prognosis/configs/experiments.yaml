@@ -1,9 +1,12 @@
-pipeline_version: "2.0.0"
-mode: quick_mode
+pipeline_version: "3.0.0"
+mode: full_mode
 force_retrain: false
 split:
-  validation_years: 2.5
-  test_years: 2.5
-evaluation_horizons: [1, 7, 30, 90]
+  validation_years: 1
+  test_years: 1
+rolling:
+  horizon: 20
+  step: 20
+lead_time_checkpoints: [1, 10, 20]
 moving_average_window: 20
 future_horizons: [7, 30, 90]

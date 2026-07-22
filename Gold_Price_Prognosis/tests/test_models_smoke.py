@@ -18,54 +18,64 @@ MULTI = pd.concat([SERIES.rename("target"), EXOG], axis=1)
 @pytest.mark.parametrize("model,config", [
     (NaiveForecaster, {}),
     (MovingAverageForecaster, {"window": 5}),
-    (SarimaForecaster, {"seasonal_period": 0, "fallback": {"order": [1, 1, 0]}}),
 ])
-def test_univariate_model_fit_predict(model, config):
-    set_seed(42); instance = model(config=config, device=select_device(), seed=42)
-    instance.fit(SERIES.iloc[:80], SERIES.iloc[80:90])
-    prediction = instance.predict(SERIES.iloc[:90], 3)
+def test_baseline_forecast_window(model, config):
+    instance = model(config=config)
+    prediction = instance.forecast_window(SERIES.iloc[:80], 3)
     assert prediction.shape == (3,) and np.isfinite(prediction).all()
 
-def test_patchtst_fit_predict(tmp_path):
+@pytest.mark.parametrize("retrain_each_step", [True, False])
+def test_sarima_forecast_window_across_rolling_calls(retrain_each_step):
     set_seed(42)
-    config = {"context_length": 16, "patch_length": 4, "stride": 4, "d_model": 8, "nhead": 2, "layers": 1, "learning_rate": .01, "batch_size": 16, "epochs": 1, "patience": 1}
-    instance = PatchTSTForecaster(config=config, device=select_device(), seed=42)
-    instance.fit(SERIES.iloc[:80].values, SERIES.iloc[80:90].values, tmp_path/"model.pt")
-    prediction = instance.predict(SERIES.iloc[:90].values, 3)
-    assert prediction.shape == (3,) and np.isfinite(prediction).all()
+    instance = SarimaForecaster(config={"order": [1, 1, 0], "seasonal_period": 0, "retrain_each_step": retrain_each_step})
+    first = instance.forecast_window(SERIES.iloc[:80], 3)
+    second = instance.forecast_window(SERIES.iloc[:90], 3)  # origin has advanced with real data
+    assert first.shape == (3,) and second.shape == (3,)
+    assert np.isfinite(first).all() and np.isfinite(second).all()
 
-def test_sarimax_fit_predict():
+@pytest.mark.parametrize("retrain_each_step", [True, False])
+def test_sarimax_forecast_window_across_rolling_calls(retrain_each_step):
     set_seed(42)
-    config = {"seasonal_period": 0, "fallback": {"order": [1, 1, 0]}}
-    instance = SarimaxForecaster(config=config)
-    instance.fit(MULTI.iloc[:80], MULTI.iloc[80:90])
-    history = MULTI.iloc[:90]
-    prediction = instance.predict(history, 3, future_exogenous=EXOG.iloc[90:93].values)
-    assert prediction.shape == (3,) and np.isfinite(prediction).all()
+    instance = SarimaxForecaster(config={"order": [1, 1, 0], "seasonal_period": 0, "retrain_each_step": retrain_each_step})
+    first = instance.forecast_window(MULTI.iloc[:80], 3, future_exogenous=EXOG.iloc[80:83].values)
+    second = instance.forecast_window(MULTI.iloc[:90], 3, future_exogenous=EXOG.iloc[90:93].values)
+    assert first.shape == (3,) and second.shape == (3,)
+    assert np.isfinite(first).all() and np.isfinite(second).all()
 
-def test_xgboost_fit_predict():
+@pytest.mark.parametrize("retrain_each_step", [True, False])
+def test_xgboost_forecast_window_across_rolling_calls(retrain_each_step):
     set_seed(42)
     feature_config = {"lags": [1, 2, 5], "rolling_windows": [5], "include_calendar": True, "exogenous_lag": 1}
-    config = {"fallback": {"max_depth": 3, "learning_rate": .2, "n_estimators": 30, "subsample": 1.0, "colsample_bytree": 1.0}}
-    instance = XGBoostForecaster(config=config, feature_config=feature_config)
-    instance.fit(MULTI.iloc[:80], MULTI.iloc[80:90])
-    history = MULTI.iloc[:90]
-    prediction = instance.predict(history, 3, future_exogenous=EXOG.iloc[90:93].values)
-    assert prediction.shape == (3,) and np.isfinite(prediction).all()
+    instance = XGBoostForecaster(config={"params": {"max_depth": 3, "learning_rate": .2, "n_estimators": 30, "subsample": 1.0, "colsample_bytree": 1.0}, "retrain_each_step": retrain_each_step}, feature_config=feature_config)
+    first = instance.forecast_window(MULTI.iloc[:80], 3, future_exogenous=EXOG.iloc[80:83].values)
+    second = instance.forecast_window(MULTI.iloc[:90], 3, future_exogenous=EXOG.iloc[90:93].values)
+    assert first.shape == (3,) and second.shape == (3,)
+    assert np.isfinite(first).all() and np.isfinite(second).all()
 
-def test_chronos_zero_shot_fit_predict():
+def test_patchtst_forecast_window_warm_start():
+    set_seed(42)
+    config = {"context_length": 16, "patch_length": 4, "stride": 4, "d_model": 8, "nhead": 2, "layers": 1,
+              "learning_rate": .01, "batch_size": 16, "epochs": 2, "patience": 1, "retrain_each_step": True, "update_epochs": 1}
+    instance = PatchTSTForecaster(config=config, device=select_device(), seed=42)
+    first = instance.forecast_window(SERIES.iloc[:80].values, 3)
+    assert instance._initialized
+    second = instance.forecast_window(SERIES.iloc[:90].values, 3)  # warm-start continuation, not a fresh fit
+    assert first.shape == (3,) and second.shape == (3,)
+    assert np.isfinite(first).all() and np.isfinite(second).all()
+
+def test_tft_forecast_window_warm_start():
+    set_seed(42)
+    config = {"context_length": 16, "hidden_size": 8, "attention_heads": 2, "lstm_layers": 1, "dropout": 0.0,
+              "learning_rate": .01, "batch_size": 16, "epochs": 2, "patience": 1, "retrain_each_step": True, "update_epochs": 1}
+    instance = TFTForecaster(config=config, device=select_device(), seed=42, n_features=MULTI.shape[1])
+    first = instance.forecast_window(MULTI.iloc[:80], 3, future_exogenous=EXOG.iloc[80:83].values)
+    second = instance.forecast_window(MULTI.iloc[:90], 3, future_exogenous=EXOG.iloc[90:93].values)
+    assert first.shape == (3,) and second.shape == (3,)
+    assert np.isfinite(first).all() and np.isfinite(second).all()
+
+def test_chronos_zero_shot_forecast_window():
     """Downloads amazon/chronos-bolt-small on first run; cached locally by huggingface_hub afterwards."""
     from gold_forecasting.models.chronos_zero_shot import ChronosForecaster
-    instance = ChronosForecaster(config={"model_id": "amazon/chronos-bolt-small"}, device="cpu")
-    instance.fit(SERIES.iloc[:80].values)
-    prediction = instance.predict(SERIES.iloc[:90].values, 3)
-    assert prediction.shape == (3,) and np.isfinite(prediction).all()
-
-def test_tft_fit_predict(tmp_path):
-    set_seed(42)
-    config = {"context_length": 16, "hidden_size": 8, "attention_heads": 2, "lstm_layers": 1, "dropout": 0.0, "learning_rate": .01, "batch_size": 16, "epochs": 1, "patience": 1}
-    instance = TFTForecaster(config=config, device=select_device(), seed=42, n_features=MULTI.shape[1])
-    instance.fit(MULTI.iloc[:80], MULTI.iloc[80:90], tmp_path/"tft.pt")
-    history = MULTI.iloc[:90]
-    prediction = instance.predict(history, 3, future_exogenous=EXOG.iloc[90:93].values)
+    instance = ChronosForecaster(config={"model_id": "amazon/chronos-bolt-small", "context_length": 64}, device="cpu")
+    prediction = instance.forecast_window(SERIES.iloc[:90].values, 3)
     assert prediction.shape == (3,) and np.isfinite(prediction).all()

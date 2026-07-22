@@ -1,20 +1,24 @@
-"""XGBoost with engineered lag/rolling/exogenous features and Optuna HPO.
+"""XGBoost with engineered lag/rolling/exogenous features, Optuna HPO scored over rolling-origin validation windows.
 
 Named `xgboost_model.py` (not `xgboost.py`) to avoid shadowing the `xgboost`
 package's own module name. Tree-based models are scale-invariant, so no
-feature scaling is applied. The multi-step test forecast is generated
-recursively: target lag/rolling features are rebuilt from the model's own
-prior predictions (never real future target values), while exogenous
-features use the test period's actual realized values -- the same
-"known-exogenous" backtest assumption documented in `sarimax.py`.
+feature scaling is applied. With `retrain_each_step` true (the default),
+every rolling window refits the regressor from scratch on `fit_data`'s
+engineered features; with it false, the first window's model is cached and
+reused for every later window. Each window's `horizon`-step forecast is
+still generated recursively within that window: target lag/rolling features
+are rebuilt from the model's own prior predictions inside the window (never
+real future values), while exogenous features use that window's actual
+realized values -- the same local "known-exogenous" assumption documented in
+`sarimax.py`.
 """
 import numpy as np
 import pandas as pd
-import optuna
 from xgboost import XGBRegressor
 from .base import BaseForecaster
 from ..feature_engineering import create_features
 from ..hpo import run_study
+from ..rolling import rolling_forecast
 from ..paths import OPTUNA
 
 def _recursive_forecast(model, history_frame, horizon, future_exogenous, feature_config):
@@ -40,51 +44,48 @@ def _recursive_forecast(model, history_frame, horizon, future_exogenous, feature
 class XGBoostForecaster(BaseForecaster):
     name = "xgboost"
     def __init__(self, config, feature_config, **_):
-        self.config = config; self.feature_config = feature_config; self.model = None; self.best_params = {}
-    def _features(self, frame):
-        target = frame.iloc[:, 0]; exogenous = frame.iloc[:, 1:] if frame.shape[1] > 1 else None
-        built = create_features(target, self.feature_config["lags"], self.feature_config.get("rolling_windows", []),
-                                 self.feature_config.get("include_calendar", True), exogenous, self.feature_config.get("exogenous_lag", 1))
-        return built.dropna()
-    def fit(self, train, validation=None, checkpoint_path=None):
-        features = self._features(train); X, y = features.drop(columns="target"), features["target"]
-        space = self.config.get("search_space"); hpo = self.config.get("hpo", {}); trials = int(hpo.get("n_trials", 0))
-        if trials and space and validation is not None and len(validation):
-            validation_target = np.asarray(validation.iloc[:, 0], float)
-            validation_exog = validation.iloc[:, 1:].values if validation.shape[1] > 1 else None
-            def objective(trial):
-                params = {
-                    "max_depth": trial.suggest_int("max_depth", *space["max_depth"]),
-                    "learning_rate": trial.suggest_float("learning_rate", *space["learning_rate"], log=True),
-                    "n_estimators": trial.suggest_int("n_estimators", *space["n_estimators"]),
-                    "subsample": trial.suggest_float("subsample", *space["subsample"]),
-                    "colsample_bytree": trial.suggest_float("colsample_bytree", *space["colsample_bytree"]),
-                }
-                trial_model = XGBRegressor(**params, random_state=int(self.config.get("seed", 42)), n_jobs=-1)
-                trial_model.fit(X, y)
-                forecast = _recursive_forecast(trial_model, train, len(validation), validation_exog, self.feature_config)
-                return float(np.mean(np.abs(validation_target - forecast)))
-            study_name = f"xgboost_{self.config.get('study_signature', 'default')}"
-            study = run_study(study_name, objective, trials, OPTUNA, seed=int(self.config.get("seed", 42)), timeout=hpo.get("timeout"))
-            params = study.best_params
-        else:
-            params = dict(self.config.get("fallback", {}))
-        self.best_params = dict(params)
-        combined = pd.concat([train, validation]) if validation is not None and len(validation) else train
-        combined_features = self._features(combined)
-        Xc, yc = combined_features.drop(columns="target"), combined_features["target"]
-        self.model = XGBRegressor(**params, random_state=int(self.config.get("seed", 42)), n_jobs=-1)
-        self.model.fit(Xc, yc)
-        return self
-    def predict(self, history, horizon, future_exogenous=None):
-        return _recursive_forecast(self.model, history, horizon, future_exogenous, self.feature_config)
+        self.config = config; self.feature_config = feature_config
+        self.retrain_each_step = bool(config.get("retrain_each_step", True))
+        self.params = dict(config.get("params", {})); self.best_params = self.params
+        self.seed = int(config.get("seed", 42)); self.model = None
+    def _fit(self, fit_data):
+        target = fit_data.iloc[:, 0]; exogenous = fit_data.iloc[:, 1:] if fit_data.shape[1] > 1 else None
+        features = create_features(target, self.feature_config["lags"], self.feature_config.get("rolling_windows", []),
+                                    self.feature_config.get("include_calendar", True), exogenous, self.feature_config.get("exogenous_lag", 1)).dropna()
+        X, y = features.drop(columns="target"), features["target"]
+        self.model = XGBRegressor(**self.params, random_state=self.seed, n_jobs=-1)
+        self.model.fit(X, y)
+    def forecast_window(self, fit_data, horizon, future_exogenous=None):
+        if self.retrain_each_step or self.model is None: self._fit(fit_data)
+        return _recursive_forecast(self.model, fit_data, horizon, future_exogenous, self.feature_config)
 
-def run_xgboost(train, validation, test, config, hpo, feature_config, data_hash, seed, force_retrain=False, evaluation_horizons=(1, 7, 30)):
+def run_xgboost(train, validation, test, config, hpo, feature_config, data_hash, seed, horizon, step, force_retrain=False, lead_time_checkpoints=(1, 10, 20)):
     """Multivariate XGBoost: train/validation/test are DataFrames with the target as column 0."""
-    from ..experiments import run_model
-    model_config = {**config, "hpo": hpo, "study_signature": data_hash[:12], "seed": seed}
-    model = XGBoostForecaster(config=model_config, feature_config=feature_config)
+    from ..experiments import run_rolling_model
+    space = config.get("search_space"); trials = int(hpo.get("n_trials", 0))
+    retrain_each_step = bool(config.get("retrain_each_step", True))
+    study = None
+    if trials and space:
+        combined_tv = pd.concat([train, validation])
+        validation_start, validation_end = len(train), len(train) + len(validation)
+        def objective(trial):
+            params = {
+                "max_depth": trial.suggest_int("max_depth", *space["max_depth"]),
+                "learning_rate": trial.suggest_float("learning_rate", *space["learning_rate"], log=True),
+                "n_estimators": trial.suggest_int("n_estimators", *space["n_estimators"]),
+                "subsample": trial.suggest_float("subsample", *space["subsample"]),
+                "colsample_bytree": trial.suggest_float("colsample_bytree", *space["colsample_bytree"]),
+            }
+            model = XGBoostForecaster(config={"params": params, "retrain_each_step": retrain_each_step, "seed": seed}, feature_config=feature_config)
+            result = rolling_forecast(model, combined_tv, validation_start, validation_end, horizon, step)
+            return float(np.mean(np.abs(result["actual"] - result["predicted"])))
+        study = run_study(f"xgboost_{data_hash[:12]}", objective, trials, OPTUNA, seed=seed, timeout=hpo.get("timeout"))
+        params = study.best_params
+    else:
+        params = dict(config.get("fallback", {}))
+    model_config = {"params": params, "retrain_each_step": retrain_each_step, "seed": seed}
     meta = {"train_range": f"{train.index.min()}:{train.index.max()}", "validation_range": f"{validation.index.min()}:{validation.index.max()}",
-            "test_range": f"{test.index.min()}:{test.index.max()}", "evaluation_horizons": list(evaluation_horizons),
+            "test_range": f"{test.index.min()}:{test.index.max()}", "lead_time_checkpoints": list(lead_time_checkpoints),
             "approach": "multivariate-known-exogenous-backtest", "exogenous_columns": list(train.columns[1:]), "feature_config": feature_config}
-    return run_model(model, "xgboost", train, validation, test, "multivariate", data_hash, model_config, seed, meta, force_retrain)
+    return run_rolling_model(lambda checkpoint_path: XGBoostForecaster(config=model_config, feature_config=feature_config), "xgboost",
+                              train, validation, test, "multivariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study)

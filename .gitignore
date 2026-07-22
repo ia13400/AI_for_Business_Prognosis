@@ -7,4 +7,23 @@ Gold_Price_Prognosis/data/interim/*
 Gold_Price_Prognosis/data/processed/*
 Gold_Price_Prognosis/data/metadata/*
 Gold_Price_Prognosis/artifacts/*
+# Training/HPO results are committed so a fresh clone (or a run on another
+# machine) can reuse them without retraining -- see run_rolling_model's
+# content-addressed cache in experiments.py.
+!Gold_Price_Prognosis/artifacts/predictions/
+!Gold_Price_Prognosis/artifacts/predictions/**
+!Gold_Price_Prognosis/artifacts/metrics/
+!Gold_Price_Prognosis/artifacts/metrics/**
+!Gold_Price_Prognosis/artifacts/manifests/
+!Gold_Price_Prognosis/artifacts/manifests/**
+!Gold_Price_Prognosis/artifacts/optuna/
+!Gold_Price_Prognosis/artifacts/optuna/**
+!Gold_Price_Prognosis/artifacts/hpo_trials/
+!Gold_Price_Prognosis/artifacts/hpo_trials/**
+!Gold_Price_Prognosis/artifacts/checkpoints/
+!Gold_Price_Prognosis/artifacts/checkpoints/**
+!Gold_Price_Prognosis/artifacts/figures/
+!Gold_Price_Prognosis/artifacts/figures/**
+# artifacts/mlflow (interactive local tracking DB) and data/{raw,processed,metadata}
+# (re-downloadable from Yahoo Finance) stay ignored.
 !Gold_Price_Prognosis/**/.gitkeep

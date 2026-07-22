@@ -1,0 +1,11 @@
+{
+  "signature": "8c42e94055bba92e374be9c6cc7a343ad2d08bca2218b58f4d41fc6d02f5c527",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "e74a6301eff4d4b33b0711ae444cc080e57f94901bb5f6bd8e871a3552eae0ba",
+    "model": "chronos_original",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "univariate-future"
+  }
+}

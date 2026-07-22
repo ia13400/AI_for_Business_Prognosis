@@ -1,0 +1,52 @@
+{
+  "signature": "5f33cd47aece8853258ed330eef44e3dcb7f5089ef9a4ca7cb099cfa97977165",
+  "inputs": {
+    "namespace": "multivariate",
+    "data_hash": "e74a6301eff4d4b33b0711ae444cc080e57f94901bb5f6bd8e871a3552eae0ba",
+    "model": "sarimax",
+    "hyperparameters": {
+      "order": [
+        1,
+        2,
+        2
+      ],
+      "seasonal_period": 0,
+      "retrain_each_step": true
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2014-09-17 00:00:00:2024-07-10 00:00:00",
+    "validation_range": "2024-07-11 00:00:00:2025-07-10 00:00:00",
+    "test_range": "2025-07-11 00:00:00:2026-07-10 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "multivariate-known-exogenous-backtest",
+    "exogenous_columns": [
+      "dollar_index",
+      "silver",
+      "oil",
+      "sp500",
+      "vix",
+      "bitcoin"
+    ],
+    "mlflow_run_id": "5a64e5d234fb42e9bed737a5a4e1be4b",
+    "runtime_seconds": 41.27039209997747
+  },
+  "best_params": {
+    "order": [
+      1,
+      2,
+      2
+    ],
+    "seasonal_order": [
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

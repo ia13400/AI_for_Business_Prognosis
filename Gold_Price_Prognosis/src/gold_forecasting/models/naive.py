@@ -5,5 +5,7 @@ from .base import BaseForecaster
 class NaiveForecaster(BaseForecaster):
     name = "naive"
     def __init__(self, **_): pass
-    def fit(self, train, validation=None, checkpoint_path=None): self.last_value = float(np.asarray(train)[-1]); return self
-    def predict(self, history, horizon, future_exogenous=None): return np.repeat(float(np.asarray(history)[-1]), horizon)
+    def forecast_window(self, fit_data, horizon, future_exogenous=None):
+        array = np.asarray(fit_data)
+        last = array[-1] if array.ndim == 1 else array[-1, 0]
+        return np.repeat(float(last), horizon)

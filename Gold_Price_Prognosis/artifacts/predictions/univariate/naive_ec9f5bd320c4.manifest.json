@@ -1,0 +1,20 @@
+{
+  "signature": "ec9f5bd320c452442aef3b228be544823d74107212a1aeabab7304a4735bbee0",
+  "inputs": {
+    "namespace": "univariate",
+    "data_hash": "e74a6301eff4d4b33b0711ae444cc080e57f94901bb5f6bd8e871a3552eae0ba",
+    "model": "naive",
+    "hyperparameters": {},
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "mlflow_run_id": "018a5872d3d74c39bed421eb99bebb55",
+    "runtime_seconds": 0.008611000026576221
+  },
+  "best_params": {}
+}

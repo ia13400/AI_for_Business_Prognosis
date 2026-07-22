@@ -16,8 +16,9 @@ MANIFESTS = ARTIFACTS / "manifests"
 FIGURES = ARTIFACTS / "figures"
 MLFLOW = ARTIFACTS / "mlflow"
 OPTUNA = ARTIFACTS / "optuna"
+HPO_TRIALS = ARTIFACTS / "hpo_trials"
 
 def ensure_directories() -> None:
     """Create all runtime directories."""
-    for path in (RAW, PROCESSED, METADATA, CACHE, CHECKPOINTS, PREDICTIONS, METRICS, MANIFESTS, FIGURES, MLFLOW, OPTUNA):
+    for path in (RAW, PROCESSED, METADATA, CACHE, CHECKPOINTS, PREDICTIONS, METRICS, MANIFESTS, FIGURES, MLFLOW, OPTUNA, HPO_TRIALS):
         path.mkdir(parents=True, exist_ok=True)
