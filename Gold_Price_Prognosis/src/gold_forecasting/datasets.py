@@ -4,8 +4,15 @@ import torch
 from torch.utils.data import TensorDataset
 
 def windows(values: np.ndarray, context_length: int) -> TensorDataset:
-    array = np.asarray(values, dtype=np.float32).reshape(-1)
+    """Build (context, next-step-target) windows.
+
+    `values` is either 1-D (univariate) or (n, n_features) (multivariate,
+    target assumed to be column 0). The predicted step is always the
+    target column immediately following each context window.
+    """
+    array = np.asarray(values, dtype=np.float32)
+    if array.ndim == 1: array = array[:, None]
     if len(array) <= context_length: raise ValueError("Series is shorter than context length")
-    x = np.stack([array[i-context_length:i] for i in range(context_length, len(array))])[:, :, None]
-    y = array[context_length:, None]
+    x = np.stack([array[i-context_length:i] for i in range(context_length, len(array))])
+    y = array[context_length:, :1]
     return TensorDataset(torch.from_numpy(x), torch.from_numpy(y))

@@ -1,7 +1,8 @@
 """Leakage-safe features based only on lagged observations."""
 import pandas as pd
 
-def create_features(target: pd.Series, lags: list[int], rolling_windows: list[int], include_calendar: bool = True) -> pd.DataFrame:
+def create_features(target: pd.Series, lags: list[int], rolling_windows: list[int], include_calendar: bool = True,
+                     exogenous: pd.DataFrame | None = None, exogenous_lag: int = 1) -> pd.DataFrame:
     frame = pd.DataFrame({"target": target.astype(float)})
     past = frame["target"].shift(1)
     for lag in lags: frame[f"price_lag_{lag}"] = frame["target"].shift(lag)
@@ -14,4 +15,9 @@ def create_features(target: pd.Series, lags: list[int], rolling_windows: list[in
     if include_calendar:
         frame["day_of_week"] = frame.index.dayofweek
         frame["month"] = frame.index.month
+    if exogenous is not None:
+        aligned = exogenous.reindex(frame.index)
+        for column in aligned:
+            frame[f"exog_{column}"] = aligned[column]
+            if exogenous_lag: frame[f"exog_{column}_lag_{exogenous_lag}"] = aligned[column].shift(exogenous_lag)
     return frame

@@ -1,7 +1,9 @@
-cutoff_date: "2025-06-01"
-validation_fraction: 0.15
-holdout_horizons: [1, 7, 30]
-future_horizons: [7, 30, 90]
+pipeline_version: "2.0.0"
 mode: quick_mode
 force_retrain: false
-pipeline_version: "1.0.0"
+split:
+  validation_years: 2.5
+  test_years: 2.5
+evaluation_horizons: [1, 7, 30, 90]
+moving_average_window: 20
+future_horizons: [7, 30, 90]

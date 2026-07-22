@@ -1,38 +1,90 @@
 seed: 42
+
+# quick_mode keeps HPO trial counts and neural epoch budgets small for fast
+# iteration/CI; full_mode is the production-quality budget. Both are
+# configurable here and selected via experiments.yaml: mode.
+hpo:
+  quick_mode: {n_trials: 3, epochs: 3, patience: 2, timeout: null}
+  full_mode: {n_trials: 25, epochs: 60, patience: 8, timeout: null}
+
 naive: {}
-arima:
-  order: [5, 1, 0]
-lstm:
-  context_length: 60
-  hidden_size: 32
-  num_layers: 1
-  dropout: 0.0
-  learning_rate: 0.001
-  batch_size: 64
-  epochs: 30
-  patience: 5
-nbeats:
-  context_length: 60
-  hidden_size: 64
-  blocks: 3
-  learning_rate: 0.001
-  batch_size: 64
-  epochs: 30
-  patience: 5
+
+moving_average:
+  window: 20
+
+# Experiment 1 (univariate) -----------------------------------------------
+
+sarima:
+  seasonal_period: 0 # 0 disables the seasonal component
+  search_space:
+    p: [0, 4]
+    d: [0, 2]
+    q: [0, 4]
+  fallback:
+    order: [2, 1, 2]
+
 patchtst:
   context_length: 64
-  patch_length: 8
-  stride: 4
-  d_model: 32
-  nhead: 4
-  layers: 2
-  learning_rate: 0.001
-  batch_size: 64
-  epochs: 30
-  patience: 5
-quick_mode:
-  epochs: 2
-  patience: 1
-  hidden_size: 16
-  d_model: 16
-full_mode: {}
+  search_space:
+    patch_length: [4, 16]
+    stride: [2, 8]
+    d_model: [16, 64]
+    nhead: [2, 8]
+    layers: [1, 4]
+    learning_rate: [0.0001, 0.01]
+    batch_size: [32, 128]
+  fallback:
+    patch_length: 8
+    stride: 4
+    d_model: 32
+    nhead: 4
+    layers: 2
+    learning_rate: 0.001
+    batch_size: 64
+
+chronos:
+  variants:
+    original: "amazon/chronos-t5-small"
+    bolt: "amazon/chronos-bolt-small"
+
+# Experiment 2 (multivariate) ----------------------------------------------
+
+sarimax:
+  seasonal_period: 0
+  search_space:
+    p: [0, 3]
+    d: [0, 2]
+    q: [0, 3]
+  fallback:
+    order: [2, 1, 2]
+
+xgboost:
+  search_space:
+    max_depth: [3, 10]
+    learning_rate: [0.01, 0.3]
+    n_estimators: [100, 600]
+    subsample: [0.5, 1.0]
+    colsample_bytree: [0.5, 1.0]
+  fallback:
+    max_depth: 5
+    learning_rate: 0.05
+    n_estimators: 300
+    subsample: 0.8
+    colsample_bytree: 0.8
+
+tft:
+  context_length: 64
+  search_space:
+    hidden_size: [16, 64]
+    attention_heads: [1, 4]
+    lstm_layers: [1, 2]
+    dropout: [0.0, 0.3]
+    learning_rate: [0.0001, 0.01]
+    batch_size: [32, 128]
+  fallback:
+    hidden_size: 32
+    attention_heads: 2
+    lstm_layers: 1
+    dropout: 0.1
+    learning_rate: 0.001
+    batch_size: 64
