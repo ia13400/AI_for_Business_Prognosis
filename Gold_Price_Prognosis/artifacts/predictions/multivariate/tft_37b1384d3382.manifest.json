@@ -1,0 +1,56 @@
+{
+  "signature": "37b1384d3382c0bf22ba6db697118ff9b57fd0e8cad9531a255c82c92257042d",
+  "inputs": {
+    "namespace": "multivariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "tft",
+    "hyperparameters": {
+      "context_length": 64,
+      "attention_heads": 1,
+      "hidden_size": 48,
+      "lstm_layers": 2,
+      "dropout": 0.11434211156870415,
+      "learning_rate": 0.0024893829539716474,
+      "batch_size": 96,
+      "epochs": 60,
+      "patience": 8,
+      "retrain_each_step": true,
+      "update_epochs": 5
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2014-09-17 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "multivariate-known-exogenous-backtest",
+    "exogenous_columns": [
+      "dollar_index",
+      "silver",
+      "oil",
+      "sp500",
+      "vix",
+      "bitcoin"
+    ],
+    "mlflow_run_id": "e81f82f2ce534851a9d7466bcac085c6",
+    "runtime_seconds": 9.71813299600035
+  },
+  "best_params": {
+    "context_length": 64,
+    "attention_heads": 1,
+    "hidden_size": 48,
+    "lstm_layers": 2,
+    "dropout": 0.11434211156870415,
+    "learning_rate": 0.0024893829539716474,
+    "batch_size": 96,
+    "epochs": 60,
+    "patience": 8,
+    "retrain_each_step": true,
+    "update_epochs": 5
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "signature": "74a1c5a42cf0e0c71b417e16cfea8ac18446291cf25c0cca8f9c90d6b32bbb04",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "sarima",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "univariate-future"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "signature": "dc54f6670f52f90956403d66eacbd587b32ef0c864ac23c1775bf11161492ba7",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "patchtst",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "univariate-future"
+  }
+}

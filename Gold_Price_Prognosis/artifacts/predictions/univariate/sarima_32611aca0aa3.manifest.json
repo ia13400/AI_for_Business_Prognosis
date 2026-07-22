@@ -1,0 +1,44 @@
+{
+  "signature": "32611aca0aa3a9fa1ef6f7fab20f9e64713687397986a2f90379cb868466c741",
+  "inputs": {
+    "namespace": "univariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "sarima",
+    "hyperparameters": {
+      "order": [
+        3,
+        0,
+        4
+      ],
+      "seasonal_period": 0,
+      "retrain_each_step": true
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2000-08-30 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "univariate",
+    "mlflow_run_id": "153d611e75b34b049add06b0a0acf88c",
+    "runtime_seconds": 6.499434273922816
+  },
+  "best_params": {
+    "order": [
+      3,
+      0,
+      4
+    ],
+    "seasonal_order": [
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

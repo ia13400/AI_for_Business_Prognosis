@@ -1,0 +1,50 @@
+{
+  "signature": "53b285e10b2ab5f1f70077f3c444f07d501f75bbe35965422a6f6c64293b6820",
+  "inputs": {
+    "namespace": "univariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "patchtst",
+    "hyperparameters": {
+      "context_length": 64,
+      "nhead": 8,
+      "d_model": 56,
+      "patch_length": 6,
+      "stride": 3,
+      "layers": 1,
+      "learning_rate": 0.0004059611610484307,
+      "batch_size": 96,
+      "epochs": 60,
+      "patience": 8,
+      "retrain_each_step": true,
+      "update_epochs": 5
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2000-08-30 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "univariate",
+    "mlflow_run_id": "ff65981746d84b55a8e707bb2bc67f8d",
+    "runtime_seconds": 15.04110389703419
+  },
+  "best_params": {
+    "context_length": 64,
+    "nhead": 8,
+    "d_model": 56,
+    "patch_length": 6,
+    "stride": 3,
+    "layers": 1,
+    "learning_rate": 0.0004059611610484307,
+    "batch_size": 96,
+    "epochs": 60,
+    "patience": 8,
+    "retrain_each_step": true,
+    "update_epochs": 5
+  }
+}
