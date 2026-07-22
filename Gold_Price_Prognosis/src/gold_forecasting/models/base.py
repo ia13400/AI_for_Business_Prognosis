@@ -2,12 +2,20 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 import copy
+import warnings
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
 from ..datasets import windows
+
+# set_seed() opts into torch.use_deterministic_algorithms(True, warn_only=True),
+# so this warning fires on virtually every non-deterministic GPU op (CuBLAS
+# attention/matmul kernels) -- with many epochs x trials x rolling windows,
+# that's thousands of near-identical lines flooding notebook output for a
+# trade-off we already deliberately accepted.
+warnings.filterwarnings("ignore", message=".*Deterministic behavior was enabled.*")
 
 class BaseForecaster(ABC):
     """A model owns its complete fit/forecast lifecycle behind one call.

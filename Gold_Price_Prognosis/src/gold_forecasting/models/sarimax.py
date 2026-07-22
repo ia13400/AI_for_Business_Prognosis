@@ -14,12 +14,19 @@ backtest" assumption standard for exogenous regression models (much more
 defensible than assuming exogenous values are known far into the future).
 """
 import time
+import warnings
 import numpy as np
 import optuna
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from .base import BaseForecaster
+
+# HPO's order search deliberately tries combinations that won't converge well
+# (Optuna just scores them poorly); with hundreds of fits per rolling-origin
+# evaluation, printing this every time floods notebook output for no benefit.
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 from ..hpo import run_study
 from ..rolling import rolling_forecast
 from ..paths import OPTUNA
