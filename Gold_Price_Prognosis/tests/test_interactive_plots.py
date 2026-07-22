@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
-from gold_forecasting.interactive_plots import combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure
+from gold_forecasting.interactive_plots import combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure, save_interactive_figure
 
 def test_combined_forecast_figure_has_one_trace_per_series():
     index = pd.bdate_range("2024-01-01", periods=5)
@@ -30,3 +30,10 @@ def test_loss_curves_figure_pairs_train_and_validation_per_model():
     fig = loss_curves_figure(loss_histories, "test title")
     names = [trace.name for trace in fig.data]
     assert names == ["patchtst (train)", "patchtst (validation)"]  # empty history is skipped entirely
+
+def test_save_interactive_figure_writes_self_contained_html(tmp_path):
+    fig = go.Figure(go.Scatter(x=[1, 2], y=[3, 4]))
+    path = save_interactive_figure(fig, tmp_path / "nested" / "chart.html")
+    assert path.exists()
+    html = path.read_text(encoding="utf-8")
+    assert "plotly" in html.lower()

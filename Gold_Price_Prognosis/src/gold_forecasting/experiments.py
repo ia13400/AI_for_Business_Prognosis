@@ -122,6 +122,29 @@ def compare_results(results: dict, namespace: str, data_hash: str):
     lead_time_fig = error_by_lead_time_figure(metrics, f"{namespace}: MAE by lead time")
     return metrics.sort_values(["horizon", "mae"]), forecast_fig, lead_time_fig
 
+def compare_error_by_day(results: dict, namespace: str, train, horizon: int):
+    """Continuous per-day (1..horizon) error curve for every model in `results`.
+
+    Purely a post-hoc recomputation over each model's already-cached
+    `rolling_result` (which already records a `lead_time` value -- 1..horizon
+    -- for every forecast point, see `rolling.rolling_forecast`) -- no model
+    is refit and no cache signature is touched, unlike widening
+    `experiments.yaml: lead_time_checkpoints` itself would (that list is
+    folded into `run_rolling_model`'s cache signature, so changing it would
+    invalidate every model's cached forecast for no methodological reason).
+    Returns (metrics, figure); `metrics` has one row per model per day.
+    """
+    _require_results(results, namespace)
+    frames = []
+    for name, r in results.items():
+        day_metrics = rolling_metrics(r["rolling_result"], _target(train), range(1, horizon + 1))
+        day_metrics = day_metrics[day_metrics["horizon"] != "complete"]
+        day_metrics.insert(0, "model", name)
+        frames.append(day_metrics)
+    metrics = pd.concat(frames, ignore_index=True)
+    fig = error_by_lead_time_figure(metrics, f"{namespace}: MAE by day (1..{horizon})")
+    return metrics.sort_values(["horizon", "mae"]), fig
+
 def compare_all_results(univariate_results: dict, multivariate_results: dict, data_hash: str):
     """Combined actual-vs-forecast figure/table across both experiments (same target, same test dates)."""
     all_results = {**univariate_results, **multivariate_results}
@@ -132,6 +155,11 @@ def compare_all_results(univariate_results: dict, multivariate_results: dict, da
     for name, r in all_results.items(): combined[name] = r["predictions"]["predicted"]
     forecast_fig = combined_forecast_figure(combined, "all models: comparison")
     return metrics.sort_values(["horizon", "mae"]), forecast_fig
+
+def compare_all_error_by_day(univariate_results: dict, multivariate_results: dict, train, horizon: int):
+    """Combined per-day (1..horizon) error curve across both experiments -- same reuse-not-retrain logic as `compare_error_by_day`."""
+    all_results = {**univariate_results, **multivariate_results}
+    return compare_error_by_day(all_results, "all models", train, horizon)
 
 def compare_loss_curves(results: dict, namespace: str):
     """Interactive train/validation loss-curve figure for models that expose `loss_history` (PatchTST, TFT, XGBoost); None if none do."""

@@ -5,7 +5,19 @@ these are built fresh at render time from the same underlying CSVs/frames
 and shared verbatim between the notebook and the Streamlit dashboard --
 clicking a legend entry toggles that model's trace on/off.
 """
+from pathlib import Path
 import plotly.graph_objects as go
+
+def save_interactive_figure(fig: go.Figure, path: Path) -> Path:
+    """Persist a Plotly figure as a standalone, still-interactive HTML file.
+
+    Loads plotly.js from a CDN (`include_plotlyjs="cdn"`) rather than
+    embedding it (~4.5MB per file) -- keeps these committed artifacts small,
+    at the cost of needing internet access to render the saved file.
+    """
+    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_html(str(path), include_plotlyjs="cdn")
+    return path
 
 def combined_forecast_figure(combined, title: str) -> go.Figure:
     """`combined`: DataFrame with an 'actual' column plus one column per model."""
