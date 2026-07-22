@@ -48,13 +48,22 @@ class XGBoostForecaster(BaseForecaster):
         self.retrain_each_step = bool(config.get("retrain_each_step", True))
         self.params = dict(config.get("params", {})); self.best_params = self.params
         self.seed = int(config.get("seed", 42)); self.model = None
+        self.loss_history = {"train": [], "validation": []}
     def _fit(self, fit_data):
         target = fit_data.iloc[:, 0]; exogenous = fit_data.iloc[:, 1:] if fit_data.shape[1] > 1 else None
         features = create_features(target, self.feature_config["lags"], self.feature_config.get("rolling_windows", []),
                                     self.feature_config.get("include_calendar", True), exogenous, self.feature_config.get("exogenous_lag", 1)).dropna()
         X, y = features.drop(columns="target"), features["target"]
-        self.model = XGBRegressor(**self.params, random_state=self.seed, n_jobs=-1)
-        self.model.fit(X, y)
+        # A trailing slice is held out purely to track a train/validation loss curve (boosting-round RMSE);
+        # the model itself only ever sees real past data, same leakage discipline as everywhere else.
+        validation_size = max(1, len(X) // 10)
+        X_train, y_train = X.iloc[:-validation_size], y.iloc[:-validation_size]
+        X_val, y_val = X.iloc[-validation_size:], y.iloc[-validation_size:]
+        self.model = XGBRegressor(**self.params, random_state=self.seed, n_jobs=-1, eval_metric="rmse")
+        self.model.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_val, y_val)], verbose=False)
+        evals = self.model.evals_result()
+        self.loss_history["train"].extend(evals["validation_0"]["rmse"])
+        self.loss_history["validation"].extend(evals["validation_1"]["rmse"])
     def forecast_window(self, fit_data, horizon, future_exogenous=None):
         if self.retrain_each_step or self.model is None: self._fit(fit_data)
         return _recursive_forecast(self.model, fit_data, horizon, future_exogenous, self.feature_config)

@@ -93,7 +93,7 @@ xgboost:
     colsample_bytree: 0.8
 
 tft:
-  enabled: false
+  enabled: true
   context_length: 64
   retrain_each_step: true # update_epochs budget set per-mode in hpo: above
   search_space:

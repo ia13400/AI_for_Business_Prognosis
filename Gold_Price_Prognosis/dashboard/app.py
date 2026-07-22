@@ -1,11 +1,13 @@
 """German artifact-only dashboard; it never trains models."""
+import re
 import sys
 from pathlib import Path
 import pandas as pd
 import streamlit as st
 
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT/"src"))
-from gold_forecasting.paths import PROCESSED,PREDICTIONS,METRICS
+from gold_forecasting.paths import PROCESSED,PREDICTIONS,METRICS,LOSSES
+from gold_forecasting.interactive_plots import combined_forecast_figure,error_by_lead_time_figure,loss_curves_figure
 
 st.set_page_config(page_title="Goldpreisprognose",page_icon="📈",layout="wide")
 st.title("Goldpreisprognose")
@@ -14,8 +16,12 @@ tabs=st.tabs(["Überblick","Datenexploration","Univariable","Multivariant Foreca
 datasets=sorted(PROCESSED.glob("gold_dataset_*.parquet"),key=lambda p:p.stat().st_mtime,reverse=True)
 data=pd.read_parquet(datasets[0]) if datasets else None
 
+def _model_name(path: Path) -> str:
+    """Strip the trailing `_<12-hex-char signature>` from an artifact filename to recover the model name."""
+    return re.sub(r"_[0-9a-f]{12}$", "", path.stem)
+
 def _experiment_tab(namespace: str, description: str, future_enabled: bool):
-    prediction_dir=PREDICTIONS/namespace; metric_dir=METRICS/namespace
+    prediction_dir=PREDICTIONS/namespace; metric_dir=METRICS/namespace; loss_dir=LOSSES/namespace
     files=sorted(prediction_dir.glob("*.csv")) if prediction_dir.exists() else []
     st.caption(description)
     if not files:
@@ -25,6 +31,22 @@ def _experiment_tab(namespace: str, description: str, future_enabled: bool):
     metrics=pd.concat([pd.read_csv(p) for p in metric_files],ignore_index=True) if metric_files else pd.DataFrame()
     st.subheader("Modellvergleich (Testzeitraum)")
     st.dataframe(metrics.sort_values(["horizon","mae"]) if not metrics.empty else metrics)
+
+    st.subheader("Alle Modelle im Vergleich (interaktiv -- Legende anklicken zum Ein-/Ausblenden)")
+    predictions={_model_name(f):pd.read_csv(f,parse_dates=["date"]).set_index("date")[["actual","predicted"]] for f in files}
+    combined=pd.DataFrame({"actual":next(iter(predictions.values()))["actual"]})
+    for name,frame in predictions.items(): combined[name]=frame["predicted"]
+    st.plotly_chart(combined_forecast_figure(combined,f"{namespace}: Modellvergleich"),use_container_width=True)
+    if not metrics.empty:
+        st.plotly_chart(error_by_lead_time_figure(metrics,f"{namespace}: MAE nach Lead-Time"),use_container_width=True)
+
+    loss_files=sorted(loss_dir.glob("*.csv")) if loss_dir.exists() else []
+    if loss_files:
+        st.subheader("Trainings-/Validierungsverlust (nur Modelle mit iterativem Training)")
+        loss_histories={_model_name(f):pd.read_csv(f).to_dict("list") for f in loss_files}
+        st.plotly_chart(loss_curves_figure(loss_histories,f"{namespace}: Verlust"),use_container_width=True)
+
+    st.subheader("Einzelmodell")
     selected=st.selectbox("Modell",files,format_func=lambda p:p.stem,key=f"{namespace}_model")
     prediction=pd.read_csv(selected,parse_dates=["date"]).set_index("date")[["actual","predicted"]]
     st.line_chart(prediction)

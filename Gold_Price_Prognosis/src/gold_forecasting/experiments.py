@@ -15,8 +15,9 @@ import time
 import mlflow
 import pandas as pd
 from .hashing import stable_hash
-from .paths import CHECKPOINTS, PREDICTIONS, METRICS, HPO_TRIALS, ensure_directories
-from .plotting import plot_predictions, plot_residuals, plot_combined, plot_error_by_lead_time
+from .paths import CHECKPOINTS, PREDICTIONS, METRICS, HPO_TRIALS, LOSSES, ensure_directories
+from .plotting import plot_predictions, plot_residuals
+from .interactive_plots import combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure
 from .metrics import rolling_metrics
 from .mlflow_utils import tracked_run, log_dict_flat
 from .rolling import rolling_forecast
@@ -38,12 +39,14 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
     prediction_path = PREDICTIONS/namespace/f"{name}_{signature[:12]}.csv"
     metric_path = METRICS/namespace/f"{name}_{signature[:12]}.csv"
     checkpoint = CHECKPOINTS/namespace/f"{name}_{signature[:12]}.pt"
+    loss_path = LOSSES/namespace/f"{name}_{signature[:12]}.csv"
     manifest = prediction_path.with_suffix(".manifest.json")
     prediction_path.parent.mkdir(parents=True, exist_ok=True); metric_path.parent.mkdir(parents=True, exist_ok=True)
     cached = prediction_path.exists() and manifest.exists() and not force_retrain
     if cached:
         rolling_result = pd.read_csv(prediction_path, parse_dates=["date"])
         runtime_seconds = 0.0
+        loss_history = pd.read_csv(loss_path).to_dict("list") if loss_path.exists() else None
     else:
         started = time.perf_counter()
         model = model_builder(checkpoint)
@@ -52,6 +55,12 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
         rolling_result = rolling_forecast(model, combined, test_start, len(combined), horizon, step)
         rolling_result.to_csv(prediction_path, index=False)
         runtime_seconds = time.perf_counter() - started
+        loss_history = getattr(model, "loss_history", None)
+        if loss_history and loss_history.get("train"):
+            loss_path.parent.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame({"train": loss_history["train"], "validation": loss_history["validation"]}).to_csv(loss_path, index=False)
+        else:
+            loss_history = None
         tags = {"data_hash": data_hash, "cache_signature": signature, **{k: str(v) for k, v in meta.items()}}
         with tracked_run(name, namespace, tags) as run:
             log_dict_flat("model", {k: v for k, v in config.items() if not isinstance(v, dict)})
@@ -73,7 +82,8 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
     plot_predictions(display_frame, namespace, name, signature)
     plot_residuals(display_frame, name, signature)
     return {"predictions": display_frame, "rolling_result": rolling_result, "metrics": metrics, "signature": signature,
-            "best_params": manifest_data.get("best_params", {}), "runtime_seconds": manifest_data["inputs"].get("runtime_seconds", 0.0), "cached": cached}
+            "best_params": manifest_data.get("best_params", {}), "runtime_seconds": manifest_data["inputs"].get("runtime_seconds", 0.0),
+            "cached": cached, "loss_history": loss_history}
 
 def run_baselines(train, validation, test, namespace, data_hash, seed, meta, horizon, step, force_retrain=False, moving_average_window=20, enabled=None):
     """`enabled`: optional {"naive": bool, "moving_average": bool}, defaulting to both enabled."""
@@ -93,25 +103,32 @@ def _require_results(results: dict, context: str):
         raise ValueError(f"No enabled models to compare for {context} -- check configs/models.yaml: at least one model's `enabled` must be true.")
 
 def compare_results(results: dict, namespace: str, data_hash: str):
+    """Returns (metrics, forecast_figure, lead_time_figure) -- both figures are interactive Plotly charts (click a legend entry to toggle a model)."""
     _require_results(results, namespace)
     metrics = pd.concat([r["metrics"] for r in results.values()], ignore_index=True)
     first = next(iter(results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
     for name, r in results.items(): combined[name] = r["predictions"]["predicted"]
-    plot_path = plot_combined(combined, namespace, data_hash)
-    lead_time_plot_path = plot_error_by_lead_time(metrics, namespace, data_hash)
-    return metrics.sort_values(["horizon", "mae"]), plot_path, lead_time_plot_path
+    forecast_fig = combined_forecast_figure(combined, f"{namespace}: model comparison")
+    lead_time_fig = error_by_lead_time_figure(metrics, f"{namespace}: MAE by lead time")
+    return metrics.sort_values(["horizon", "mae"]), forecast_fig, lead_time_fig
 
 def compare_all_results(univariate_results: dict, multivariate_results: dict, data_hash: str):
-    """Combined actual-vs-forecast plot/table across both experiments (same target, same test dates)."""
+    """Combined actual-vs-forecast figure/table across both experiments (same target, same test dates)."""
     all_results = {**univariate_results, **multivariate_results}
     _require_results(all_results, "all models")
     metrics = pd.concat([r["metrics"] for r in all_results.values()], ignore_index=True)
     first = next(iter(all_results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
     for name, r in all_results.items(): combined[name] = r["predictions"]["predicted"]
-    plot_path = plot_combined(combined, "all", data_hash)
-    return metrics.sort_values(["horizon", "mae"]), plot_path
+    forecast_fig = combined_forecast_figure(combined, "all models: comparison")
+    return metrics.sort_values(["horizon", "mae"]), forecast_fig
+
+def compare_loss_curves(results: dict, namespace: str):
+    """Interactive train/validation loss-curve figure for models that expose `loss_history` (PatchTST, TFT, XGBoost); None if none do."""
+    loss_histories = {name: r["loss_history"] for name, r in results.items() if r.get("loss_history")}
+    if not loss_histories: return None
+    return loss_curves_figure(loss_histories, f"{namespace}: training/validation loss")
 
 def run_future(model, name, full_series, horizon, data_hash, seed, meta, force_retrain=False):
     """One-shot genuine future forecast beyond the data's end (Kapitel 6, univariate models only).

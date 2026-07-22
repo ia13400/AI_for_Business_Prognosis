@@ -23,16 +23,5 @@ def plot_predictions(frame, experiment, model, signature, cutoff=None, force=Fal
     fig,ax=plt.subplots(figsize=(12,5)); frame[[c for c in ["actual","predicted"] if c in frame]].plot(ax=ax); 
     if cutoff: ax.axvline(pd.Timestamp(cutoff),color="red",ls="--")
     ax.set(title=f"{experiment}: {model}",ylabel="USD per troy ounce"); return _save(fig,FIGURES/f"{experiment}_{model}_{signature[:12]}.png",force)
-def plot_combined(frame, experiment, signature, force=False):
-    fig,ax=plt.subplots(figsize=(12,5)); frame.plot(ax=ax); ax.set(title=f"{experiment}: model comparison",ylabel="USD per troy ounce"); return _save(fig,FIGURES/f"{experiment}_combined_{signature[:12]}.png",force)
 def plot_residuals(frame, model, signature, force=False):
     fig,ax=plt.subplots(figsize=(12,4)); (frame.actual-frame.predicted).plot(ax=ax); ax.axhline(0,color="black",lw=.8); ax.set(title=f"Residuals: {model}",ylabel="USD"); return _save(fig,FIGURES/f"holdout_{model}_residuals_{signature[:12]}.png",force)
-def plot_error_by_lead_time(metrics: pd.DataFrame, namespace: str, signature: str, force=False):
-    """MAE per model at each configured lead-time checkpoint (e.g. day 1/10/20 of the same rolling forecast)."""
-    part = metrics[metrics["horizon"] != "complete"].copy(); part["horizon"] = part["horizon"].astype(int)
-    pivot = part.pivot(index="horizon", columns="model", values="mae").sort_index()
-    fig, ax = plt.subplots(figsize=(8, 5)); pivot.plot(ax=ax, marker="o")
-    ax.set(title=f"{namespace}: MAE by lead time", xlabel="Lead time (days)", ylabel="MAE (USD)"); ax.set_xticks(pivot.index)
-    return _save(fig, FIGURES/f"{namespace}_error_by_lead_time_{signature[:12]}.png", force)
-def plot_losses(history, model, signature, force=False):
-    fig,ax=plt.subplots(figsize=(8,4)); ax.plot(history["train"],label="Train"); ax.plot(history["validation"],label="Validation"); ax.legend(); ax.set(title=f"Loss: {model}",xlabel="Epoch",ylabel="MSE"); return _save(fig,FIGURES/f"training_{model}_{signature[:12]}.png",force)

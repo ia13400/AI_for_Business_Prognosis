@@ -30,8 +30,8 @@
       20
     ],
     "approach": "univariate",
-    "mlflow_run_id": "b17263cc23294181b2cf9c93ab66b3c1",
-    "runtime_seconds": 20.58948910003528
+    "mlflow_run_id": "0165ffd4bc16403286644bb481bae0b6",
+    "runtime_seconds": 22.572215800057165
   },
   "best_params": {
     "context_length": 64,

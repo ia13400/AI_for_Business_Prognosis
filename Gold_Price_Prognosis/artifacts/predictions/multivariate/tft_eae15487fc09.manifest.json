@@ -37,8 +37,8 @@
       "vix",
       "bitcoin"
     ],
-    "mlflow_run_id": "76f3b42524ce4503ad0cacb850d10fa7",
-    "runtime_seconds": 66.07840460003354
+    "mlflow_run_id": "f981fd39f0fd433a98e18052a956c343",
+    "runtime_seconds": 154.10452900000382
   },
   "best_params": {
     "context_length": 64,

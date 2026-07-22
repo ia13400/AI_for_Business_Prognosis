@@ -20,6 +20,8 @@ Gold_Price_Prognosis/artifacts/*
 !Gold_Price_Prognosis/artifacts/optuna/**
 !Gold_Price_Prognosis/artifacts/hpo_trials/
 !Gold_Price_Prognosis/artifacts/hpo_trials/**
+!Gold_Price_Prognosis/artifacts/losses/
+!Gold_Price_Prognosis/artifacts/losses/**
 !Gold_Price_Prognosis/artifacts/checkpoints/
 !Gold_Price_Prognosis/artifacts/checkpoints/**
 !Gold_Price_Prognosis/artifacts/figures/

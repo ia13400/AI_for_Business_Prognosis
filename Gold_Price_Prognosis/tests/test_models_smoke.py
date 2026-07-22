@@ -51,6 +51,11 @@ def test_xgboost_forecast_window_across_rolling_calls(retrain_each_step):
     second = instance.forecast_window(MULTI.iloc[:90], 3, future_exogenous=EXOG.iloc[90:93].values)
     assert first.shape == (3,) and second.shape == (3,)
     assert np.isfinite(first).all() and np.isfinite(second).all()
+    # each forecast_window call refits (retrain_each_step) or reuses a cached fit (not); either way at least
+    # one fit already ran, so 30 (n_estimators) train/validation loss values must have been recorded.
+    expected_calls = 2 if retrain_each_step else 1
+    assert len(instance.loss_history["train"]) == 30 * expected_calls
+    assert len(instance.loss_history["validation"]) == len(instance.loss_history["train"])
 
 def test_patchtst_forecast_window_warm_start():
     set_seed(42)
