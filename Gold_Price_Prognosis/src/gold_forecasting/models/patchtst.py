@@ -5,6 +5,7 @@ Optuna HPO is scored over rolling-origin validation windows (see
 machinery lives in `NeuralForecaster` (`base.py`) and applies identically
 here without any extra code in this file.
 """
+import time
 import numpy as np
 import pandas as pd
 from torch import nn
@@ -52,6 +53,7 @@ def run_patchtst(train, validation, test, config, hpo, data_hash, seed, horizon,
     retrain_each_step = bool(config.get("retrain_each_step", True))
     update_epochs = int(hpo.get("update_epochs", max(1, int(hpo["epochs"]) // 10)))
     study = None
+    hpo_started = time.perf_counter()
     if trials and space:
         combined_tv = pd.concat([train, validation])
         validation_start, validation_end = len(train), len(train) + len(validation)
@@ -68,10 +70,11 @@ def run_patchtst(train, validation, test, config, hpo, data_hash, seed, horizon,
     else:
         model_config = {"context_length": context_length, **config.get("fallback", {}), "epochs": hpo["epochs"], "patience": hpo["patience"],
                          "retrain_each_step": retrain_each_step, "update_epochs": update_epochs}
+    hpo_seconds = time.perf_counter() - hpo_started
     def build(checkpoint_path):
         model = PatchTSTForecaster(config=model_config, device=device, seed=seed, checkpoint_path=checkpoint_path)
         model.best_params = model_config
         return model
     meta = {"train_range": f"{train.index.min()}:{train.index.max()}", "validation_range": f"{validation.index.min()}:{validation.index.max()}",
             "test_range": f"{test.index.min()}:{test.index.max()}", "lead_time_checkpoints": list(lead_time_checkpoints), "approach": "univariate"}
-    return run_rolling_model(build, "patchtst", train, validation, test, "univariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study)
+    return run_rolling_model(build, "patchtst", train, validation, test, "univariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study, extra_seconds=hpo_seconds)

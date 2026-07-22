@@ -9,6 +9,7 @@ estimated; later windows cheaply extend the fitted state through newly
 revealed real observations via `.append(refit=False)` (so the forecast
 origin still advances correctly) without re-estimating the coefficients.
 """
+import time
 import numpy as np
 import optuna
 import pandas as pd
@@ -51,6 +52,7 @@ def run_sarima(train, validation, test, config, hpo, data_hash, seed, horizon, s
     retrain_each_step = bool(config.get("retrain_each_step", True))
     seasonal_period = int(config.get("seasonal_period", 0))
     study = None
+    hpo_started = time.perf_counter()
     if trials and space:
         combined_tv = pd.concat([train, validation])
         validation_start, validation_end = len(train), len(train) + len(validation)
@@ -66,8 +68,9 @@ def run_sarima(train, validation, test, config, hpo, data_hash, seed, horizon, s
         order = (study.best_params["p"], study.best_params["d"], study.best_params["q"])
     else:
         order = tuple(config.get("fallback", {}).get("order", [2, 1, 2]))
+    hpo_seconds = time.perf_counter() - hpo_started
     model_config = {"order": list(order), "seasonal_period": seasonal_period, "retrain_each_step": retrain_each_step}
     meta = {"train_range": f"{train.index.min()}:{train.index.max()}", "validation_range": f"{validation.index.min()}:{validation.index.max()}",
             "test_range": f"{test.index.min()}:{test.index.max()}", "lead_time_checkpoints": list(lead_time_checkpoints), "approach": "univariate"}
     return run_rolling_model(lambda checkpoint_path: SarimaForecaster(config=model_config), "sarima", train, validation, test, "univariate",
-                              data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study)
+                              data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study, extra_seconds=hpo_seconds)

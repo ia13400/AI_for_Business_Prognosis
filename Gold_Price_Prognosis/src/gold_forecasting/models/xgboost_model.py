@@ -12,6 +12,7 @@ real future values), while exogenous features use that window's actual
 realized values -- the same local "known-exogenous" assumption documented in
 `sarimax.py`.
 """
+import time
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
@@ -74,6 +75,7 @@ def run_xgboost(train, validation, test, config, hpo, feature_config, data_hash,
     space = config.get("search_space"); trials = int(hpo.get("n_trials", 0))
     retrain_each_step = bool(config.get("retrain_each_step", True))
     study = None
+    hpo_started = time.perf_counter()
     if trials and space:
         combined_tv = pd.concat([train, validation])
         validation_start, validation_end = len(train), len(train) + len(validation)
@@ -92,9 +94,10 @@ def run_xgboost(train, validation, test, config, hpo, feature_config, data_hash,
         params = study.best_params
     else:
         params = dict(config.get("fallback", {}))
+    hpo_seconds = time.perf_counter() - hpo_started
     model_config = {"params": params, "retrain_each_step": retrain_each_step, "seed": seed}
     meta = {"train_range": f"{train.index.min()}:{train.index.max()}", "validation_range": f"{validation.index.min()}:{validation.index.max()}",
             "test_range": f"{test.index.min()}:{test.index.max()}", "lead_time_checkpoints": list(lead_time_checkpoints),
             "approach": "multivariate-known-exogenous-backtest", "exogenous_columns": list(train.columns[1:]), "feature_config": feature_config}
     return run_rolling_model(lambda checkpoint_path: XGBoostForecaster(config=model_config, feature_config=feature_config), "xgboost",
-                              train, validation, test, "multivariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study)
+                              train, validation, test, "multivariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study, extra_seconds=hpo_seconds)

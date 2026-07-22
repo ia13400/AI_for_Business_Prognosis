@@ -24,13 +24,19 @@ from .rolling import rolling_forecast
 
 def _target(frame): return frame.iloc[:, 0] if isinstance(frame, pd.DataFrame) else frame
 
-def run_rolling_model(model_builder, name, train, validation, test, namespace, data_hash, config, seed, meta, horizon, step, force_retrain=False, hpo_study=None):
+def run_rolling_model(model_builder, name, train, validation, test, namespace, data_hash, config, seed, meta, horizon, step, force_retrain=False, hpo_study=None, extra_seconds=0.0):
     """`model_builder(checkpoint_path) -> model` is called once, only on a cache miss.
 
     Runs the rolling-origin forecast over the test region (train+validation
     is what the *first* test window's `fit_data` contains -- see
     `rolling.rolling_forecast` -- which is what makes "reuse validation as
     training data" hold automatically once HPO has frozen hyperparameters).
+
+    `extra_seconds`: wall-clock time already spent *before* this call (e.g.
+    the Optuna HPO search, which happens in the caller before `model_builder`
+    is even constructed) -- added to this function's own measured time so
+    `runtime_seconds` reflects the model's true total cost, not just the
+    final evaluation pass.
     """
     ensure_directories()
     inputs = {"namespace": namespace, "data_hash": data_hash, "model": name, "hyperparameters": config, "seed": seed,
@@ -54,17 +60,19 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
         test_start = len(train) + len(validation)
         rolling_result = rolling_forecast(model, combined, test_start, len(combined), horizon, step)
         rolling_result.to_csv(prediction_path, index=False)
-        runtime_seconds = time.perf_counter() - started
         loss_history = getattr(model, "loss_history", None)
         if loss_history and loss_history.get("train"):
             loss_path.parent.mkdir(parents=True, exist_ok=True)
             pd.DataFrame({"train": loss_history["train"], "validation": loss_history["validation"]}).to_csv(loss_path, index=False)
         else:
             loss_history = None
+        # Logged into MLflow now (can't include the logging call's own overhead); the *complete* runtime_seconds
+        # -- used for the manifest and the notebook's runtime report -- is measured after all housekeeping below.
+        partial_runtime_seconds = extra_seconds + (time.perf_counter() - started)
         tags = {"data_hash": data_hash, "cache_signature": signature, **{k: str(v) for k, v in meta.items()}}
         with tracked_run(name, namespace, tags) as run:
             log_dict_flat("model", {k: v for k, v in config.items() if not isinstance(v, dict)})
-            mlflow.log_param("seed", seed); mlflow.log_metric("runtime_seconds", runtime_seconds)
+            mlflow.log_param("seed", seed); mlflow.log_metric("runtime_seconds", partial_runtime_seconds)
             mlflow.log_artifact(str(prediction_path))
             if checkpoint.exists(): mlflow.log_artifact(str(checkpoint))
             inputs["mlflow_run_id"] = run.info.run_id
@@ -72,6 +80,7 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
             trials_path = HPO_TRIALS/namespace/f"{name}_{signature[:12]}.csv"
             trials_path.parent.mkdir(parents=True, exist_ok=True)
             hpo_study.trials_dataframe().to_csv(trials_path, index=False)
+        runtime_seconds = extra_seconds + (time.perf_counter() - started)
         inputs["runtime_seconds"] = runtime_seconds
         manifest.write_text(json.dumps({"signature": signature, "inputs": inputs, "best_params": getattr(model, "best_params", {})}, indent=2, default=str), encoding="utf-8")
     manifest_data = json.loads(manifest.read_text(encoding="utf-8"))

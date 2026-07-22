@@ -10,6 +10,7 @@ applies identically here. The recursive per-window forecast uses that
 window's actual exogenous values, the same "known-exogenous" backtest
 assumption documented in `sarimax.py`.
 """
+import time
 import numpy as np
 import pandas as pd
 from torch import nn
@@ -66,6 +67,7 @@ def run_tft(train, validation, test, config, hpo, data_hash, seed, horizon, step
     retrain_each_step = bool(config.get("retrain_each_step", True))
     update_epochs = int(hpo.get("update_epochs", max(1, int(hpo["epochs"]) // 10)))
     study = None
+    hpo_started = time.perf_counter()
     if trials and space:
         combined_tv = pd.concat([train, validation])
         validation_start, validation_end = len(train), len(train) + len(validation)
@@ -82,6 +84,7 @@ def run_tft(train, validation, test, config, hpo, data_hash, seed, horizon, step
     else:
         model_config = {"context_length": context_length, **config.get("fallback", {}), "epochs": hpo["epochs"], "patience": hpo["patience"],
                          "retrain_each_step": retrain_each_step, "update_epochs": update_epochs}
+    hpo_seconds = time.perf_counter() - hpo_started
     def build(checkpoint_path):
         model = TFTForecaster(config=model_config, device=device, seed=seed, n_features=n_features, checkpoint_path=checkpoint_path)
         model.best_params = model_config
@@ -89,4 +92,4 @@ def run_tft(train, validation, test, config, hpo, data_hash, seed, horizon, step
     meta = {"train_range": f"{train.index.min()}:{train.index.max()}", "validation_range": f"{validation.index.min()}:{validation.index.max()}",
             "test_range": f"{test.index.min()}:{test.index.max()}", "lead_time_checkpoints": list(lead_time_checkpoints),
             "approach": "multivariate-known-exogenous-backtest", "exogenous_columns": list(train.columns[1:])}
-    return run_rolling_model(build, "tft", train, validation, test, "multivariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study)
+    return run_rolling_model(build, "tft", train, validation, test, "multivariate", data_hash, model_config, seed, meta, horizon, step, force_retrain, hpo_study=study, extra_seconds=hpo_seconds)
