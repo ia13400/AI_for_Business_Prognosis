@@ -75,17 +75,25 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
     return {"predictions": display_frame, "rolling_result": rolling_result, "metrics": metrics, "signature": signature,
             "best_params": manifest_data.get("best_params", {}), "runtime_seconds": manifest_data["inputs"].get("runtime_seconds", 0.0), "cached": cached}
 
-def run_baselines(train, validation, test, namespace, data_hash, seed, meta, horizon, step, force_retrain=False, moving_average_window=20):
+def run_baselines(train, validation, test, namespace, data_hash, seed, meta, horizon, step, force_retrain=False, moving_average_window=20, enabled=None):
+    """`enabled`: optional {"naive": bool, "moving_average": bool}, defaulting to both enabled."""
     from .forecasting import make_model
     from .config import select_device
+    enabled = enabled or {}
     device = select_device()
     results = {}
     for name, config in (("naive", {}), ("moving_average", {"window": moving_average_window})):
+        if not enabled.get(name, True): continue
         builder = lambda checkpoint_path, n=name, c=config: make_model(n, c, device, seed)
         results[name] = run_rolling_model(builder, name, train, validation, test, namespace, data_hash, config, seed, meta, horizon, step, force_retrain)
     return results
 
+def _require_results(results: dict, context: str):
+    if not results:
+        raise ValueError(f"No enabled models to compare for {context} -- check configs/models.yaml: at least one model's `enabled` must be true.")
+
 def compare_results(results: dict, namespace: str, data_hash: str):
+    _require_results(results, namespace)
     metrics = pd.concat([r["metrics"] for r in results.values()], ignore_index=True)
     first = next(iter(results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
@@ -97,6 +105,7 @@ def compare_results(results: dict, namespace: str, data_hash: str):
 def compare_all_results(univariate_results: dict, multivariate_results: dict, data_hash: str):
     """Combined actual-vs-forecast plot/table across both experiments (same target, same test dates)."""
     all_results = {**univariate_results, **multivariate_results}
+    _require_results(all_results, "all models")
     metrics = pd.concat([r["metrics"] for r in all_results.values()], ignore_index=True)
     first = next(iter(all_results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})

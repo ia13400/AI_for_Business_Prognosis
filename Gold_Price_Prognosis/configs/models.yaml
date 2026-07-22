@@ -10,14 +10,21 @@ hpo:
   quick_mode: {n_trials: 3, epochs: 3, patience: 2, timeout: null, update_epochs: 1}
   full_mode: {n_trials: 25, epochs: 60, patience: 8, timeout: null, update_epochs: 5}
 
-naive: {}
+# Every model below has `enabled: true`, checked by the notebook/scripts
+# before calling it -- flip to `false` to skip a model entirely without
+# breaking downstream comparisons, plots, or metrics (see experiments.py).
+
+naive:
+  enabled: true
 
 moving_average:
+  enabled: true
   window: 20
 
 # Experiment 1 (univariate) -----------------------------------------------
 
 sarima:
+  enabled: true
   seasonal_period: 0 # 0 disables the seasonal component
   retrain_each_step: true # full refit from scratch at every rolling window
   search_space:
@@ -28,6 +35,7 @@ sarima:
     order: [2, 1, 2]
 
 patchtst:
+  enabled: true
   context_length: 64
   retrain_each_step: true # warm-start continuation at every rolling window after the first (update_epochs budget set per-mode in hpo: above)
   search_space:
@@ -48,6 +56,8 @@ patchtst:
     batch_size: 64
 
 chronos:
+  enabled_original: true # the two variants are toggled independently -- each has its own notebook cell/run_* function
+  enabled_bolt: true
   context_length: 512 # tail-truncation of available history handed to the pretrained pipeline each window
   variants:
     original: "amazon/chronos-t5-small"
@@ -56,6 +66,7 @@ chronos:
 # Experiment 2 (multivariate) ----------------------------------------------
 
 sarimax:
+  enabled: true
   seasonal_period: 0
   retrain_each_step: true
   search_space:
@@ -66,6 +77,7 @@ sarimax:
     order: [2, 1, 2]
 
 xgboost:
+  enabled: true
   retrain_each_step: true
   search_space:
     max_depth: [3, 10]
@@ -81,6 +93,7 @@ xgboost:
     colsample_bytree: 0.8
 
 tft:
+  enabled: true
   context_length: 64
   retrain_each_step: true # update_epochs budget set per-mode in hpo: above
   search_space:
