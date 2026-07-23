@@ -66,13 +66,14 @@ def test_compare_trading_bots_cheater_is_upper_bound(tmp_path, monkeypatch):
     results = run_baselines(split.train.gold_usd, split.validation.gold_usd, split.test.gold_usd,
                              "univariate", "testhash", seed=42, meta={}, horizon=horizon, step=horizon)
     prior_actual = split.validation.gold_usd.iloc[-1]
-    timeseries, summary, timeseries_fig, pnl_fig = compare_trading_bots(results, "univariate", prior_actual, horizon, "testhash")
+    timeseries, summary, timeseries_fig, pnl_png_path = compare_trading_bots(results, "univariate", prior_actual, horizon, "testhash")
     assert set(summary["model"]) == set(results) | {"cheater"}
     cheater_final = summary.loc[summary["model"] == "cheater", "final_value"].iloc[0]
     other_finals = summary.loc[summary["model"] != "cheater", "final_value"]
     assert (cheater_final >= other_finals).all()  # perfect foresight is always an upper bound
     assert (summary["pnl"] == summary["final_value"] - 10_000.0).all()
     assert set(timeseries["model"]) == set(results) | {"cheater"}
+    assert pnl_png_path.exists()
 
 def test_xgboost_diff_feature_importance_persists_and_reloads_on_cache_hit(tmp_path, monkeypatch):
     split = _split(tmp_path, monkeypatch)

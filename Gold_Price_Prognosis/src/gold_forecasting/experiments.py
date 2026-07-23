@@ -16,10 +16,10 @@ import mlflow
 import pandas as pd
 from .hashing import stable_hash
 from .paths import CHECKPOINTS, PREDICTIONS, METRICS, HPO_TRIALS, LOSSES, FEATURE_IMPORTANCE, ensure_directories
-from .plotting import plot_predictions, plot_residuals, plot_trading_bot
+from .plotting import plot_predictions, plot_residuals, plot_trading_bot, plot_pnl_bar
 from .interactive_plots import (combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure,
                                  leaderboard_figure, feature_importance_figure, residual_histogram_figure,
-                                 residual_boxplot_by_leadtime_figure, portfolio_value_figure, pnl_bar_figure)
+                                 residual_boxplot_by_leadtime_figure, portfolio_value_figure)
 from .metrics import rolling_metrics
 from .mlflow_utils import tracked_run, log_dict_flat
 from .rolling import rolling_forecast
@@ -204,9 +204,10 @@ def compare_trading_bots(results: dict, namespace: str, prior_actual: float, hor
     interactive comparison" pattern `run_rolling_model` already uses for
     `plot_predictions`/`plot_residuals`.
 
-    Returns (portfolio_timeseries, summary, timeseries_fig, pnl_fig):
+    Returns (portfolio_timeseries, summary, timeseries_fig, pnl_png_path):
       portfolio_timeseries: long-format (model, date, portfolio_value)
       summary: (model, final_value, pnl), pnl = final_value - starting_capital, sorted best-first
+      pnl_png_path: a static PNG (per-bar USD labels) via `plotting.plot_pnl_bar`
     """
     _require_results(results, namespace)
     frames = []
@@ -228,8 +229,8 @@ def compare_trading_bots(results: dict, namespace: str, prior_actual: float, hor
 
     wide = portfolio_timeseries.pivot(index="date", columns="model", values="portfolio_value")
     timeseries_fig = portfolio_value_figure(wide, starting_capital, f"{namespace}: portfolio value (trading-bot backtest)")
-    pnl_fig = pnl_bar_figure(summary, starting_capital, f"{namespace}: final portfolio value per bot")
-    return portfolio_timeseries, summary, timeseries_fig, pnl_fig
+    pnl_png_path = plot_pnl_bar(summary, starting_capital, data_hash)
+    return portfolio_timeseries, summary, timeseries_fig, pnl_png_path
 
 def run_future(model, name, full_series, horizon, data_hash, seed, meta, force_retrain=False):
     """One-shot genuine future forecast beyond the data's end (Kapitel 6, univariate models only).

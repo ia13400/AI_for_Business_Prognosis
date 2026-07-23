@@ -28,16 +28,20 @@ def plot_residuals(frame, model, signature, force=False):
 def plot_trading_bot(bot, model, signature, force=False):
     """`bot`: a `trading.simulate_trading_bot`/`simulate_cheater_bot` result (date, actual, portfolio_value, position, action).
 
-    Top panel: real gold price (left axis) vs. portfolio value (right axis) --
-    separate axes since the two are both USD but on very different scales
-    (price ~thousands/oz, portfolio value can range from a few thousand to
-    several times the starting capital). Buy/sell decisions are marked
+    Top panel: real gold price and (for real models -- `bot` has a `predicted`
+    column, unlike the cheater bot, which has none) that model's own predicted
+    price, both on the left axis (same USD/oz unit, directly comparable), vs.
+    portfolio value on the right axis -- a separate axis since portfolio value
+    can range from a few thousand to several times the starting capital, a
+    very different scale from the price itself. Buy/sell decisions are marked
     directly on the price line. Bottom panel: the resulting cash/gold
     position over time as a step curve -- its rising/falling edges *are* the
     buy/sell decisions, its flat stretches are "hold".
     """
     fig,(ax_price,ax_position)=plt.subplots(2,1,figsize=(12,7),sharex=True,gridspec_kw={"height_ratios":[3,1]})
     ax_price.plot(bot["date"],bot["actual"],color="black",lw=1,label="Gold price (USD/oz)")
+    if "predicted" in bot.columns:
+        ax_price.plot(bot["date"],bot["predicted"],color="tab:orange",lw=1,ls="--",label="Predicted price (USD/oz)")
     ax_portfolio=ax_price.twinx(); ax_portfolio.plot(bot["date"],bot["portfolio_value"],color="tab:blue",lw=1.5,label="Portfolio value (USD)")
     buys,sells=bot[bot["action"]=="buy"],bot[bot["action"]=="sell"]
     ax_price.scatter(buys["date"],buys["actual"],marker="^",color="green",s=70,zorder=5,label="Buy")
@@ -51,3 +55,27 @@ def plot_trading_bot(bot, model, signature, force=False):
     ax_position.set_yticks([0,1]); ax_position.set_yticklabels(["Cash","Gold"]); ax_position.set_ylabel("Position")
     fig.tight_layout()
     return _save(fig,FIGURES/f"trading_{model}_{signature[:12]}.png",force)
+def plot_pnl_bar(summary, starting_capital, signature, force=False):
+    """`summary`: DataFrame with 'model' and 'final_value' columns.
+
+    Diverging horizontal bar rooted at `starting_capital` (not zero) -- each
+    bar's own ending USD value is written directly next to it (left of the
+    bar for a loss, right for a gain), so the exact number is readable
+    without hovering. Named `pnl_summary_*` (not `trading_*`) so it doesn't
+    collide with the per-bot `trading_<model>_*.png` glob used elsewhere.
+    """
+    ranked=summary.sort_values("final_value")
+    colors=["#e34948" if v<starting_capital else "#2a78d6" for v in ranked["final_value"]]
+    fig,ax=plt.subplots(figsize=(10,0.45*len(ranked)+1.5))
+    ax.barh(ranked["model"],ranked["final_value"]-starting_capital,left=starting_capital,color=colors)
+    ax.axvline(starting_capital,color="black",lw=1)
+    lo,hi=min(starting_capital,ranked["final_value"].min()),max(starting_capital,ranked["final_value"].max())
+    pad=(hi-lo)*0.15 if hi>lo else 1.0
+    ax.set_xlim(lo-pad,hi+pad)
+    for y,value in enumerate(ranked["final_value"]):
+        ha="left" if value>=starting_capital else "right"
+        offset=pad*0.15
+        ax.text(value+(offset if ha=="left" else -offset),y,f"{value:,.0f} USD",va="center",ha=ha,fontsize=9)
+    ax.set_xlabel("Final portfolio value (USD)"); ax.set_title(f"Final portfolio value per bot (starting capital {starting_capital:,.0f} USD)")
+    fig.tight_layout()
+    return _save(fig,FIGURES/f"pnl_summary_{signature[:12]}.png",force)
