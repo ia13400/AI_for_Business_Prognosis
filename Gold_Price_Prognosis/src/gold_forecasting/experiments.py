@@ -24,6 +24,7 @@ from .metrics import rolling_metrics
 from .mlflow_utils import tracked_run, log_dict_flat
 from .rolling import rolling_forecast
 from .trading import simulate_trading_bot, simulate_cheater_bot
+from .display import display_namespace
 
 def _target(frame): return frame.iloc[:, 0] if isinstance(frame, pd.DataFrame) else frame
 
@@ -127,8 +128,8 @@ def compare_results(results: dict, namespace: str, data_hash: str):
     first = next(iter(results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
     for name, r in results.items(): combined[name] = r["predictions"]["predicted"]
-    forecast_fig = combined_forecast_figure(combined, f"{namespace}: model comparison")
-    lead_time_fig = error_by_lead_time_figure(metrics, f"{namespace}: MAE by lead time")
+    forecast_fig = combined_forecast_figure(combined, f"{display_namespace(namespace)}: model comparison")
+    lead_time_fig = error_by_lead_time_figure(metrics, f"{display_namespace(namespace)}: MAE by lead time")
     return metrics.sort_values(["horizon", "mae"]), forecast_fig, lead_time_fig
 
 def compare_error_by_day(results: dict, namespace: str, train, horizon: int):
@@ -151,7 +152,7 @@ def compare_error_by_day(results: dict, namespace: str, train, horizon: int):
         day_metrics.insert(0, "model", name)
         frames.append(day_metrics)
     metrics = pd.concat(frames, ignore_index=True)
-    fig = error_by_lead_time_figure(metrics, f"{namespace}: MAE by day (1..{horizon})")
+    fig = error_by_lead_time_figure(metrics, f"{display_namespace(namespace)}: MAE by day (1..{horizon})")
     return metrics.sort_values(["horizon", "mae"]), fig
 
 def compare_all_results(univariate_results: dict, multivariate_results: dict, data_hash: str):
@@ -162,7 +163,7 @@ def compare_all_results(univariate_results: dict, multivariate_results: dict, da
     first = next(iter(all_results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
     for name, r in all_results.items(): combined[name] = r["predictions"]["predicted"]
-    forecast_fig = combined_forecast_figure(combined, "all models: comparison")
+    forecast_fig = combined_forecast_figure(combined, f"{display_namespace("all models")}: comparison")
     return metrics.sort_values(["horizon", "mae"]), forecast_fig
 
 def compare_all_error_by_day(univariate_results: dict, multivariate_results: dict, train, horizon: int):
@@ -175,21 +176,21 @@ def compare_leaderboard(results: dict, namespace: str, metric: str = "mae"):
     _require_results(results, namespace)
     metrics = pd.concat([r["metrics"] for r in results.values()], ignore_index=True)
     complete = metrics[metrics["horizon"] == "complete"]
-    return leaderboard_figure(complete, f"{namespace}: leaderboard ({metric})", metric)
+    return leaderboard_figure(complete, f"{display_namespace(namespace)}: leaderboard ({metric})", metric)
 
 def compare_residual_diagnostics(results: dict, namespace: str):
     """Residual histogram + boxplot-by-lead-time for every model in `results`, reusing each model's already-cached `rolling_result` -- no retraining."""
     _require_results(results, namespace)
     residuals = {name: r["rolling_result"]["actual"] - r["rolling_result"]["predicted"] for name, r in results.items()}
-    histogram_fig = residual_histogram_figure(residuals, f"{namespace}: residual distribution")
-    boxplot_fig = residual_boxplot_by_leadtime_figure({name: r["rolling_result"] for name, r in results.items()}, f"{namespace}: residual spread by lead time")
+    histogram_fig = residual_histogram_figure(residuals, f"{display_namespace(namespace)}: residual distribution")
+    boxplot_fig = residual_boxplot_by_leadtime_figure({name: r["rolling_result"] for name, r in results.items()}, f"{display_namespace(namespace)}: residual spread by lead time")
     return histogram_fig, boxplot_fig
 
 def compare_loss_curves(results: dict, namespace: str):
     """Interactive train/validation loss-curve figure for models that expose `loss_history` (PatchTST, TFT, XGBoost); None if none do."""
     loss_histories = {name: r["loss_history"] for name, r in results.items() if r.get("loss_history")}
     if not loss_histories: return None
-    return loss_curves_figure(loss_histories, f"{namespace}: training/validation loss")
+    return loss_curves_figure(loss_histories, f"{display_namespace(namespace)}: training/validation loss")
 
 def compare_trading_bots(results: dict, namespace: str, prior_actual: float, horizon: int, data_hash: str,
                           starting_capital: float = 10_000.0, threshold: float = 5.0):
@@ -228,7 +229,7 @@ def compare_trading_bots(results: dict, namespace: str, prior_actual: float, hor
     summary = summary.sort_values("pnl", ascending=False)
 
     wide = portfolio_timeseries.pivot(index="date", columns="model", values="portfolio_value")
-    timeseries_fig = portfolio_value_figure(wide, starting_capital, f"{namespace}: portfolio value (trading-bot backtest)")
+    timeseries_fig = portfolio_value_figure(wide, starting_capital, f"{display_namespace(namespace)}: portfolio value (trading-bot backtest)")
     pnl_png_path = plot_pnl_bar(summary, starting_capital, data_hash)
     return portfolio_timeseries, summary, timeseries_fig, pnl_png_path
 

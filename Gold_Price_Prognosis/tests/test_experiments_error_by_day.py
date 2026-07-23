@@ -3,6 +3,7 @@ from gold_forecasting.splitting import chronological_split
 from gold_forecasting.experiments import (run_baselines, run_rolling_model, compare_error_by_day, compare_all_error_by_day,
                                            compare_leaderboard, compare_residual_diagnostics, compare_trading_bots)
 from gold_forecasting.models.xgboost_diff import XGBoostDiffForecaster
+from gold_forecasting.display import display_name
 
 def _split(tmp_path, monkeypatch):
     # `experiments.py`/`plotting.py`/`mlflow_utils.py` each did `from .paths import X`, which
@@ -49,7 +50,7 @@ def test_compare_leaderboard_ranks_by_complete_row(tmp_path, monkeypatch):
     results = run_baselines(split.train.gold_usd, split.validation.gold_usd, split.test.gold_usd,
                              "univariate", "testhash", seed=42, meta={}, horizon=horizon, step=horizon)
     fig = compare_leaderboard(results, "univariate")
-    assert set(fig.data[0].y) == set(results)
+    assert set(fig.data[0].y) == {display_name(name) for name in results}
 
 def test_compare_residual_diagnostics_returns_histogram_and_boxplot(tmp_path, monkeypatch):
     split = _split(tmp_path, monkeypatch)
@@ -57,8 +58,9 @@ def test_compare_residual_diagnostics_returns_histogram_and_boxplot(tmp_path, mo
     results = run_baselines(split.train.gold_usd, split.validation.gold_usd, split.test.gold_usd,
                              "univariate", "testhash", seed=42, meta={}, horizon=horizon, step=horizon)
     histogram_fig, boxplot_fig = compare_residual_diagnostics(results, "univariate")
-    assert {trace.name for trace in histogram_fig.data} == set(results)
-    assert {trace.name for trace in boxplot_fig.data} == set(results)
+    expected = {display_name(name) for name in results}
+    assert {trace.name for trace in histogram_fig.data} == expected
+    assert {trace.name for trace in boxplot_fig.data} == expected
 
 def test_compare_trading_bots_cheater_is_upper_bound(tmp_path, monkeypatch):
     split = _split(tmp_path, monkeypatch)
