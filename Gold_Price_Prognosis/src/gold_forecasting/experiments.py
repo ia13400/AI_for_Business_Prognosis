@@ -16,13 +16,14 @@ import mlflow
 import pandas as pd
 from .hashing import stable_hash
 from .paths import CHECKPOINTS, PREDICTIONS, METRICS, HPO_TRIALS, LOSSES, FEATURE_IMPORTANCE, ensure_directories
-from .plotting import plot_predictions, plot_residuals
+from .plotting import plot_predictions, plot_residuals, plot_trading_bot
 from .interactive_plots import (combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure,
                                  leaderboard_figure, feature_importance_figure, residual_histogram_figure,
-                                 residual_boxplot_by_leadtime_figure)
+                                 residual_boxplot_by_leadtime_figure, portfolio_value_figure, pnl_bar_figure)
 from .metrics import rolling_metrics
 from .mlflow_utils import tracked_run, log_dict_flat
 from .rolling import rolling_forecast
+from .trading import simulate_trading_bot, simulate_cheater_bot
 
 def _target(frame): return frame.iloc[:, 0] if isinstance(frame, pd.DataFrame) else frame
 
@@ -189,6 +190,46 @@ def compare_loss_curves(results: dict, namespace: str):
     loss_histories = {name: r["loss_history"] for name, r in results.items() if r.get("loss_history")}
     if not loss_histories: return None
     return loss_curves_figure(loss_histories, f"{namespace}: training/validation loss")
+
+def compare_trading_bots(results: dict, namespace: str, prior_actual: float, horizon: int, data_hash: str,
+                          starting_capital: float = 10_000.0, threshold: float = 5.0):
+    """Runs `simulate_trading_bot` on every model in `results` plus one 'cheater' bot with
+    perfect foresight over the same test-period actual prices. Purely post-hoc, reusing each
+    model's already-cached `rolling_result` -- no retraining, same reuse pattern as
+    `compare_error_by_day`/`compare_residual_diagnostics`.
+
+    Also saves one static per-model/per-cheater PNG via `plotting.plot_trading_bot`
+    (real price vs. portfolio value on separate axes, plus the resulting
+    cash/gold position over time) -- same "persist a static PNG alongside the
+    interactive comparison" pattern `run_rolling_model` already uses for
+    `plot_predictions`/`plot_residuals`.
+
+    Returns (portfolio_timeseries, summary, timeseries_fig, pnl_fig):
+      portfolio_timeseries: long-format (model, date, portfolio_value)
+      summary: (model, final_value, pnl), pnl = final_value - starting_capital, sorted best-first
+    """
+    _require_results(results, namespace)
+    frames = []
+    for name, r in results.items():
+        bot = simulate_trading_bot(r["rolling_result"], prior_actual, horizon, threshold, starting_capital)
+        plot_trading_bot(bot, name, data_hash)
+        bot.insert(0, "model", name)
+        frames.append(bot[["model", "date", "portfolio_value"]])
+    first_actual = next(iter(results.values()))["rolling_result"].sort_values("date").set_index("date")["actual"]
+    cheater = simulate_cheater_bot(first_actual, starting_capital)
+    plot_trading_bot(cheater, "cheater", data_hash)
+    cheater.insert(0, "model", "cheater")
+    frames.append(cheater[["model", "date", "portfolio_value"]])
+    portfolio_timeseries = pd.concat(frames, ignore_index=True)
+
+    summary = portfolio_timeseries.sort_values("date").groupby("model")["portfolio_value"].last().rename("final_value").reset_index()
+    summary["pnl"] = summary["final_value"] - starting_capital
+    summary = summary.sort_values("pnl", ascending=False)
+
+    wide = portfolio_timeseries.pivot(index="date", columns="model", values="portfolio_value")
+    timeseries_fig = portfolio_value_figure(wide, starting_capital, f"{namespace}: portfolio value (trading-bot backtest)")
+    pnl_fig = pnl_bar_figure(summary, starting_capital, f"{namespace}: final portfolio value per bot")
+    return portfolio_timeseries, summary, timeseries_fig, pnl_fig
 
 def run_future(model, name, full_series, horizon, data_hash, seed, meta, force_retrain=False):
     """One-shot genuine future forecast beyond the data's end (Kapitel 6, univariate models only).

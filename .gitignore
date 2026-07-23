@@ -24,6 +24,8 @@ Gold_Price_Prognosis/artifacts/*
 !Gold_Price_Prognosis/artifacts/losses/**
 !Gold_Price_Prognosis/artifacts/feature_importance/
 !Gold_Price_Prognosis/artifacts/feature_importance/**
+!Gold_Price_Prognosis/artifacts/trading/
+!Gold_Price_Prognosis/artifacts/trading/**
 !Gold_Price_Prognosis/artifacts/checkpoints/
 !Gold_Price_Prognosis/artifacts/checkpoints/**
 !Gold_Price_Prognosis/artifacts/figures/

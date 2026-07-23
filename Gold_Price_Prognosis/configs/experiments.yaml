@@ -10,3 +10,6 @@ rolling:
 lead_time_checkpoints: [1, 10, 20]
 moving_average_window: 20
 future_horizons: [7, 30, 90]
+trading_bot:
+  starting_capital: 10000
+  threshold: 5

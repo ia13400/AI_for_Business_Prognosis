@@ -6,13 +6,13 @@ import pandas as pd
 import streamlit as st
 
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT/"src"))
-from gold_forecasting.paths import PROCESSED,PREDICTIONS,METRICS,LOSSES
-from gold_forecasting.interactive_plots import combined_forecast_figure,error_by_lead_time_figure,loss_curves_figure
+from gold_forecasting.paths import PROCESSED,PREDICTIONS,METRICS,LOSSES,TRADING
+from gold_forecasting.interactive_plots import combined_forecast_figure,error_by_lead_time_figure,loss_curves_figure,portfolio_value_figure,pnl_bar_figure
 
 st.set_page_config(page_title="Goldpreisprognose",page_icon="📈",layout="wide")
 st.title("Goldpreisprognose")
 st.warning("Modellbasierte Prognosen sind unsicher und keine Anlageberatung.")
-tabs=st.tabs(["Überblick","Datenexploration","Univariable","Multivariant Forecasting","MLflow"])
+tabs=st.tabs(["Überblick","Datenexploration","Univariable","Multivariant Forecasting","Handelsbot","MLflow"])
 datasets=sorted(PROCESSED.glob("gold_dataset_*.parquet"),key=lambda p:p.stat().st_mtime,reverse=True)
 data=pd.read_parquet(datasets[0]) if datasets else None
 
@@ -82,4 +82,18 @@ with tabs[2]:
     _experiment_tab("univariate","Experiment 1: Prognose ohne exogene Variablen (SARIMA, PatchTST, Chronos) gegen Naiv und gleitenden Durchschnitt.",future_enabled=True)
 with tabs[3]:
     _experiment_tab("multivariate","Experiment 2: Prognose mit exogenen Variablen aus data.yaml (SARIMAX, XGBoost, XGBoost-Differenzen, TFT). Rückblickender Test mit tatsächlich realisierten exogenen Werten (kein unbekannt-zukünftiges Szenario). XGBoost (Differenzen) sagt Renditen statt Preisniveaus vorher -- siehe Notebook Kapitel 4.2 fuer die Begruendung.",future_enabled=False)
-with tabs[4]: st.write("Lokale Oberfläche starten: `uv run python scripts/launch_mlflow.py`. Tracking-Daten liegen unter `artifacts/mlflow/`.")
+with tabs[4]:
+    st.subheader("Handelsbot-Backtest")
+    st.caption("Vereinfachte Backtest-Simulation je Modell (Notebook Kapitel 5.2): Startkapital 10.000 USD, immer 100% Bargeld oder 100% Gold, keine Gebuehren. Entscheidung einmal pro rollierendem 20-Tage-Schritt anhand der Prognose fuer das Ende dieses Schritts -- Kauf nur bei prognostizierter Rendite > 5 USD, Verkauf nur bei < -5 USD. Der 'cheater'-Bot kennt die zukuenftigen Realpreise und kann taeglich entscheiden -- eine theoretische Obergrenze, kein echtes Modell, keine Anlageberatung.")
+    trading_timeseries_path,trading_summary_path=TRADING/"portfolio_timeseries.csv",TRADING/"summary.csv"
+    if not trading_timeseries_path.exists() or not trading_summary_path.exists():
+        st.info("Bitte zuerst den Handelsbot-Backtest ausfuehren (Notebook, Kapitel 5.2).")
+    else:
+        trading_timeseries=pd.read_csv(trading_timeseries_path,parse_dates=["date"])
+        trading_summary=pd.read_csv(trading_summary_path).sort_values("pnl",ascending=False)
+        trading_starting_capital=float((trading_summary["final_value"]-trading_summary["pnl"]).iloc[0])
+        trading_wide=trading_timeseries.pivot(index="date",columns="model",values="portfolio_value")
+        st.plotly_chart(portfolio_value_figure(trading_wide,trading_starting_capital,"Portfolio-Wert je Bot"),use_container_width=True)
+        st.plotly_chart(pnl_bar_figure(trading_summary,trading_starting_capital,"Endstand je Bot"),use_container_width=True)
+        st.dataframe(trading_summary)
+with tabs[5]: st.write("Lokale Oberfläche starten: `uv run python scripts/launch_mlflow.py`. Tracking-Daten liegen unter `artifacts/mlflow/`.")

@@ -5,7 +5,8 @@ from gold_forecasting.interactive_plots import (combined_forecast_figure, error_
                                                   feature_importance_figure, residual_histogram_figure,
                                                   residual_boxplot_by_leadtime_figure, hpo_convergence_figure,
                                                   hpo_param_relationship_figure, exogenous_overview_figure,
-                                                  patchtst_sliding_window_figure, patchtst_epoch_schedule_figure)
+                                                  patchtst_sliding_window_figure, patchtst_epoch_schedule_figure,
+                                                  pnl_bar_figure)
 
 def test_combined_forecast_figure_has_one_trace_per_series():
     index = pd.bdate_range("2024-01-01", periods=5)
@@ -64,6 +65,14 @@ def test_residual_boxplot_by_leadtime_figure_one_box_trace_per_model():
     }
     fig = residual_boxplot_by_leadtime_figure(results, "test title")
     assert [trace.name for trace in fig.data] == ["a", "b"]
+
+def test_pnl_bar_figure_rooted_at_starting_capital_not_zero():
+    summary = pd.DataFrame({"model": ["winner", "loser", "flat"], "final_value": [15_000.0, 8_000.0, 10_000.0]})
+    fig = pnl_bar_figure(summary, starting_capital=10_000.0, title="test title")
+    bar = fig.data[0]
+    assert bar.base == 10_000.0  # bars are rooted at starting capital, not zero
+    ranked = dict(zip(bar.y, bar.x))
+    assert ranked["winner"] == 5_000.0 and ranked["loser"] == -2_000.0 and ranked["flat"] == 0.0
 
 def test_hpo_convergence_figure_best_so_far_is_running_minimum():
     trials = pd.DataFrame({"number": [2, 0, 1], "value": [5.0, 10.0, 3.0]})

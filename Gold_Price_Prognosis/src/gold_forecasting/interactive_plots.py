@@ -126,6 +126,41 @@ def correlation_heatmap_figure(correlation, title: str) -> go.Figure:
     fig.update_layout(title=title)
     return fig
 
+def portfolio_value_figure(combined, starting_capital: float, title: str) -> go.Figure:
+    """`combined`: DataFrame indexed by date, one column per bot (portfolio value, USD).
+
+    A dashed gray horizontal line marks the starting capital -- the reference
+    for "did this bot beat simply holding cash" -- instead of a second y-axis
+    for the raw gold price (mixing "portfolio USD" and "USD/troy ounce" on one
+    axis would be misleading despite the shared unit).
+    """
+    fig = go.Figure()
+    for name in combined.columns:
+        fig.add_trace(go.Scatter(x=combined.index, y=combined[name], name=name, mode="lines"))
+    fig.add_hline(y=starting_capital, line=dict(color="gray", dash="dot"),
+                  annotation_text=f"Starting capital ({starting_capital:,.0f} USD)")
+    fig.update_layout(title=title, xaxis_title="Date", yaxis_title="Portfolio value (USD)",
+                       legend_title="Click to toggle", hovermode="x unified")
+    return fig
+
+def pnl_bar_figure(summary, starting_capital: float, title: str) -> go.Figure:
+    """`summary`: DataFrame with 'model' and 'final_value' columns.
+
+    Diverging horizontal bar *rooted at `starting_capital`* (not zero) -- each
+    bar starts at the starting-capital baseline and extends to that bot's
+    actual ending portfolio value, so the x-axis reads directly in USD ending
+    balance (e.g. "around 10,000 plus or minus") rather than an abstract P&L
+    delta, while bar length/color still encodes gain (blue) vs loss (red).
+    """
+    ranked = summary.sort_values("final_value")
+    colors = ["#e34948" if v < starting_capital else "#2a78d6" for v in ranked["final_value"]]
+    fig = go.Figure(go.Bar(x=ranked["final_value"] - starting_capital, y=ranked["model"], base=starting_capital,
+                           orientation="h", marker_color=colors))
+    fig.add_vline(x=starting_capital, line=dict(color="black", width=1),
+                  annotation_text=f"Starting capital ({starting_capital:,.0f} USD)")
+    fig.update_layout(title=title, xaxis_title="Final portfolio value (USD)", yaxis_title="Model")
+    return fig
+
 def patchtst_sliding_window_figure(train, validation, test, context_length: int, horizon: int, step: int, title: str) -> go.Figure:
     """Illustrates the rolling-origin mechanism concretely for PatchTST: at every rolling window, the
     model sees a fixed `context_length`-day input window (its actual, bounded input -- see
