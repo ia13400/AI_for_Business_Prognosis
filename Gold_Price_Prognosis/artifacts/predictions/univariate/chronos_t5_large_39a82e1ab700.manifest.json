@@ -1,0 +1,29 @@
+{
+  "signature": "39a82e1ab70053aa7126f858e0190b6bf5dc8b9b0b300cc84e09a326fd622eec",
+  "inputs": {
+    "namespace": "univariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "chronos_t5_large",
+    "hyperparameters": {
+      "model_id": "amazon/chronos-t5-large",
+      "context_length": 512
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2000-08-30 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "univariate-zero-shot",
+    "mlflow_run_id": "e2fc016c738c4679bd0f765f62766a09",
+    "runtime_seconds": 388.6857874999987
+  },
+  "best_params": {
+    "model_id": "amazon/chronos-t5-large"
+  }
+}

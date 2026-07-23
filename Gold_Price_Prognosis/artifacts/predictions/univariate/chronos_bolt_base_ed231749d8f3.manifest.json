@@ -1,0 +1,29 @@
+{
+  "signature": "ed231749d8f34456c9ff2ba1aff8cd776a76456449574fc17d6bca1d3f0b658a",
+  "inputs": {
+    "namespace": "univariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "chronos_bolt_base",
+    "hyperparameters": {
+      "model_id": "amazon/chronos-bolt-base",
+      "context_length": 512
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2000-08-30 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "univariate-zero-shot",
+    "mlflow_run_id": "5c0318e1161d471a8bd93bb177345d62",
+    "runtime_seconds": 61.01378370006569
+  },
+  "best_params": {
+    "model_id": "amazon/chronos-bolt-base"
+  }
+}

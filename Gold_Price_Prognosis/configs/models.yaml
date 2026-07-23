@@ -56,12 +56,18 @@ patchtst:
     batch_size: 64
 
 chronos:
-  enabled_original: true # the two variants are toggled independently -- each has its own notebook cell/run_* function
+  enabled_original: true # every variant is toggled independently -- each has its own notebook cell/run_* function
   enabled_bolt: true
+  enabled_t5_base: true # larger, still zero-shot siblings of the "original"/"bolt" small variants above
+  enabled_t5_large: true # ~710M parameters -- by far the largest model in this project; slow on CPU
+  enabled_bolt_base: true
   context_length: 512 # tail-truncation of available history handed to the pretrained pipeline each window
   variants:
     original: "amazon/chronos-t5-small"
     bolt: "amazon/chronos-bolt-small"
+    t5_base: "amazon/chronos-t5-base"
+    t5_large: "amazon/chronos-t5-large"
+    bolt_base: "amazon/chronos-bolt-base"
 
 # Experiment 2 (multivariate) ----------------------------------------------
 

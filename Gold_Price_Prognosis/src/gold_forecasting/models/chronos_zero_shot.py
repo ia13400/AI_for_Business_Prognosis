@@ -44,3 +44,12 @@ def run_chronos_original(train, validation, test, config, data_hash, seed, horiz
 
 def run_chronos_bolt(train, validation, test, config, data_hash, seed, horizon, step, force_retrain=False, lead_time_checkpoints=(1, 10, 20)):
     return run_chronos(train, validation, test, config, "bolt", data_hash, seed, horizon, step, force_retrain, lead_time_checkpoints)
+
+def run_chronos_t5_base(train, validation, test, config, data_hash, seed, horizon, step, force_retrain=False, lead_time_checkpoints=(1, 10, 20)):
+    return run_chronos(train, validation, test, config, "t5_base", data_hash, seed, horizon, step, force_retrain, lead_time_checkpoints)
+
+def run_chronos_t5_large(train, validation, test, config, data_hash, seed, horizon, step, force_retrain=False, lead_time_checkpoints=(1, 10, 20)):
+    return run_chronos(train, validation, test, config, "t5_large", data_hash, seed, horizon, step, force_retrain, lead_time_checkpoints)
+
+def run_chronos_bolt_base(train, validation, test, config, data_hash, seed, horizon, step, force_retrain=False, lead_time_checkpoints=(1, 10, 20)):
+    return run_chronos(train, validation, test, config, "bolt_base", data_hash, seed, horizon, step, force_retrain, lead_time_checkpoints)

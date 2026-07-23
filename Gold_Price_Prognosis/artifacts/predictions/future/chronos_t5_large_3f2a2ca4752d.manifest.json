@@ -1,0 +1,11 @@
+{
+  "signature": "3f2a2ca4752d6dd4d42985a8cf9ba68f19a43cc1f332788ae0c7cc1417af9ea3",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "chronos_t5_large",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "univariate-future"
+  }
+}
