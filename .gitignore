@@ -22,6 +22,8 @@ Gold_Price_Prognosis/artifacts/*
 !Gold_Price_Prognosis/artifacts/hpo_trials/**
 !Gold_Price_Prognosis/artifacts/losses/
 !Gold_Price_Prognosis/artifacts/losses/**
+!Gold_Price_Prognosis/artifacts/feature_importance/
+!Gold_Price_Prognosis/artifacts/feature_importance/**
 !Gold_Price_Prognosis/artifacts/checkpoints/
 !Gold_Price_Prognosis/artifacts/checkpoints/**
 !Gold_Price_Prognosis/artifacts/figures/
@@ -29,7 +31,11 @@ Gold_Price_Prognosis/artifacts/*
 # artifacts/mlflow (interactive local tracking DB) and data/{raw,processed,metadata}
 # (re-downloadable from Yahoo Finance) stay ignored.
 !Gold_Price_Prognosis/**/.gitkeep
-# Stray local MLflow file-store created when a Jupyter kernel's working
-# directory makes mlflow default to a relative ./mlruns instead of our
-# configured SQLite store (artifacts/mlflow/mlflow.db) -- not meant to be tracked.
+# Stray local MLflow file-store: mlflow.set_tracking_uri() only points the
+# tracking *metadata* at our SQLite store (artifacts/mlflow/mlflow.db) -- new
+# experiments still default their *artifact* store to a relative ./mlruns
+# based on the process's cwd at the time, wherever that happens to be
+# (repo root, Gold_Price_Prognosis/, notebooks/, a pytest run, ...). Not meant
+# to be tracked regardless of where it lands.
+mlruns/
 Gold_Price_Prognosis/**/mlruns/

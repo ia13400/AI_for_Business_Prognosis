@@ -65,6 +65,7 @@ class XGBoostForecaster(BaseForecaster):
         evals = self.model.evals_result()
         self.loss_history["train"].extend(evals["validation_0"]["rmse"])
         self.loss_history["validation"].extend(evals["validation_1"]["rmse"])
+        self.feature_importances_ = dict(zip(X.columns, (float(v) for v in self.model.feature_importances_)))
     def forecast_window(self, fit_data, horizon, future_exogenous=None):
         if self.retrain_each_step or self.model is None: self._fit(fit_data)
         return _recursive_forecast(self.model, fit_data, horizon, future_exogenous, self.feature_config)

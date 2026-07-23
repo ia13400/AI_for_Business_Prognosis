@@ -15,9 +15,11 @@ import time
 import mlflow
 import pandas as pd
 from .hashing import stable_hash
-from .paths import CHECKPOINTS, PREDICTIONS, METRICS, HPO_TRIALS, LOSSES, ensure_directories
+from .paths import CHECKPOINTS, PREDICTIONS, METRICS, HPO_TRIALS, LOSSES, FEATURE_IMPORTANCE, ensure_directories
 from .plotting import plot_predictions, plot_residuals
-from .interactive_plots import combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure
+from .interactive_plots import (combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure,
+                                 leaderboard_figure, feature_importance_figure, residual_histogram_figure,
+                                 residual_boxplot_by_leadtime_figure)
 from .metrics import rolling_metrics
 from .mlflow_utils import tracked_run, log_dict_flat
 from .rolling import rolling_forecast
@@ -46,6 +48,7 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
     metric_path = METRICS/namespace/f"{name}_{signature[:12]}.csv"
     checkpoint = CHECKPOINTS/namespace/f"{name}_{signature[:12]}.pt"
     loss_path = LOSSES/namespace/f"{name}_{signature[:12]}.csv"
+    feature_importance_path = FEATURE_IMPORTANCE/namespace/f"{name}_{signature[:12]}.csv"
     manifest = prediction_path.with_suffix(".manifest.json")
     prediction_path.parent.mkdir(parents=True, exist_ok=True); metric_path.parent.mkdir(parents=True, exist_ok=True)
     cached = prediction_path.exists() and manifest.exists() and not force_retrain
@@ -53,6 +56,7 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
         rolling_result = pd.read_csv(prediction_path, parse_dates=["date"])
         runtime_seconds = 0.0
         loss_history = pd.read_csv(loss_path).to_dict("list") if loss_path.exists() else None
+        feature_importance = dict(pd.read_csv(feature_importance_path).values) if feature_importance_path.exists() else None
     else:
         started = time.perf_counter()
         model = model_builder(checkpoint)
@@ -66,6 +70,10 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
             pd.DataFrame({"train": loss_history["train"], "validation": loss_history["validation"]}).to_csv(loss_path, index=False)
         else:
             loss_history = None
+        feature_importance = getattr(model, "feature_importances_", None)
+        if feature_importance:
+            feature_importance_path.parent.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame(list(feature_importance.items()), columns=["feature", "importance"]).to_csv(feature_importance_path, index=False)
         # Logged into MLflow now (can't include the logging call's own overhead); the *complete* runtime_seconds
         # -- used for the manifest and the notebook's runtime report -- is measured after all housekeeping below.
         partial_runtime_seconds = extra_seconds + (time.perf_counter() - started)
@@ -92,7 +100,7 @@ def run_rolling_model(model_builder, name, train, validation, test, namespace, d
     plot_residuals(display_frame, name, signature)
     return {"predictions": display_frame, "rolling_result": rolling_result, "metrics": metrics, "signature": signature,
             "best_params": manifest_data.get("best_params", {}), "runtime_seconds": manifest_data["inputs"].get("runtime_seconds", 0.0),
-            "cached": cached, "loss_history": loss_history}
+            "cached": cached, "loss_history": loss_history, "feature_importance": feature_importance}
 
 def run_baselines(train, validation, test, namespace, data_hash, seed, meta, horizon, step, force_retrain=False, moving_average_window=20, enabled=None):
     """`enabled`: optional {"naive": bool, "moving_average": bool}, defaulting to both enabled."""
@@ -160,6 +168,21 @@ def compare_all_error_by_day(univariate_results: dict, multivariate_results: dic
     """Combined per-day (1..horizon) error curve across both experiments -- same reuse-not-retrain logic as `compare_error_by_day`."""
     all_results = {**univariate_results, **multivariate_results}
     return compare_error_by_day(all_results, "all models", train, horizon)
+
+def compare_leaderboard(results: dict, namespace: str, metric: str = "mae"):
+    """Ranked bar chart of the 'complete'-row `metric` value per model -- built from each model's already-computed `metrics`, no retraining."""
+    _require_results(results, namespace)
+    metrics = pd.concat([r["metrics"] for r in results.values()], ignore_index=True)
+    complete = metrics[metrics["horizon"] == "complete"]
+    return leaderboard_figure(complete, f"{namespace}: leaderboard ({metric})", metric)
+
+def compare_residual_diagnostics(results: dict, namespace: str):
+    """Residual histogram + boxplot-by-lead-time for every model in `results`, reusing each model's already-cached `rolling_result` -- no retraining."""
+    _require_results(results, namespace)
+    residuals = {name: r["rolling_result"]["actual"] - r["rolling_result"]["predicted"] for name, r in results.items()}
+    histogram_fig = residual_histogram_figure(residuals, f"{namespace}: residual distribution")
+    boxplot_fig = residual_boxplot_by_leadtime_figure({name: r["rolling_result"] for name, r in results.items()}, f"{namespace}: residual spread by lead time")
+    return histogram_fig, boxplot_fig
 
 def compare_loss_curves(results: dict, namespace: str):
     """Interactive train/validation loss-curve figure for models that expose `loss_history` (PatchTST, TFT, XGBoost); None if none do."""

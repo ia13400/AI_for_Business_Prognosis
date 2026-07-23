@@ -50,8 +50,8 @@
       "include_calendar": true,
       "exogenous_lag": 1
     },
-    "mlflow_run_id": "cbe5aab5dba84a9ebae2f3bdf212c573",
-    "runtime_seconds": 3.2049610579852015
+    "mlflow_run_id": "4c6f7ca204d04674a504843d5ae4f1bc",
+    "runtime_seconds": 8.764621799928136
   },
   "best_params": {
     "max_depth": 3,
