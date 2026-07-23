@@ -4,7 +4,8 @@ from gold_forecasting.interactive_plots import (combined_forecast_figure, error_
                                                   save_interactive_figure, correlation_heatmap_figure, leaderboard_figure,
                                                   feature_importance_figure, residual_histogram_figure,
                                                   residual_boxplot_by_leadtime_figure, hpo_convergence_figure,
-                                                  hpo_param_relationship_figure, exogenous_overview_figure)
+                                                  hpo_param_relationship_figure, exogenous_overview_figure,
+                                                  patchtst_sliding_window_figure, patchtst_epoch_schedule_figure)
 
 def test_combined_forecast_figure_has_one_trace_per_series():
     index = pd.bdate_range("2024-01-01", periods=5)
@@ -98,6 +99,26 @@ def test_correlation_heatmap_figure_uses_fixed_scale_and_labels():
     assert list(heatmap.x) == list(heatmap.y) == ["gold_usd", "dollar_index", "silver"]
     assert heatmap.zmin == -1 and heatmap.zmax == 1
     assert heatmap.z[0][0] == 1.0  # self-correlation
+
+def test_patchtst_sliding_window_figure_one_context_and_horizon_bar_per_window():
+    index = pd.bdate_range("2020-01-01", periods=180)
+    train, validation, test = pd.Series(range(100), index=index[:100]), pd.Series(range(40), index=index[100:140]), pd.Series(range(40), index=index[140:180])
+    fig = patchtst_sliding_window_figure(train, validation, test, context_length=10, horizon=20, step=20, title="test title")
+    # 2 validation windows + 2 test windows, 2 traces each (context + horizon) = 8
+    assert len(fig.data) == 8
+    context_traces = [t for t in fig.data if "Kontext" in t.name]
+    horizon_traces = [t for t in fig.data if "Prognosehorizont" in t.name]
+    assert len(context_traces) == 4 and len(horizon_traces) == 4
+    # a window's horizon must start exactly where its context ends
+    first_context, first_horizon = context_traces[0], horizon_traces[0]
+    assert first_horizon.x[0] > first_context.x[1]
+
+def test_patchtst_epoch_schedule_figure_reconstructs_first_window_length():
+    loss_history = {"train": list(range(25)), "validation": list(range(25))}
+    fig = patchtst_epoch_schedule_figure(loss_history, n_windows=3, update_epochs=5, title="test title")
+    bar_trace = next(t for t in fig.data if t.type == "bar")
+    assert list(bar_trace.y) == [15, 5, 5]  # 25 - 2*5 = 15 for the first (early-stopped) window
+    assert list(bar_trace.x) == [1, 2, 3]
 
 def test_save_interactive_figure_writes_self_contained_html(tmp_path):
     fig = go.Figure(go.Scatter(x=[1, 2], y=[3, 4]))

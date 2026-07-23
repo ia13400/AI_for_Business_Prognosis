@@ -126,6 +126,75 @@ def correlation_heatmap_figure(correlation, title: str) -> go.Figure:
     fig.update_layout(title=title)
     return fig
 
+def patchtst_sliding_window_figure(train, validation, test, context_length: int, horizon: int, step: int, title: str) -> go.Figure:
+    """Illustrates the rolling-origin mechanism concretely for PatchTST: at every rolling window, the
+    model sees a fixed `context_length`-day input window (its actual, bounded input -- see
+    `NeuralForecaster._recursive_forecast` in `models/base.py`, which always feeds in just the trailing
+    `context_length` real observations) immediately followed by the `horizon`-day forecast window,
+    both regions the walk-forward engine steps forward by `step` days each time (`rolling.rolling_windows`).
+
+    One row per rolling window, HPO/validation windows and final-test windows shown together (in
+    different colors) so you can see both phases use the identical mechanism -- HPO just scores
+    candidates against the validation region instead of test, per `rolling.rolling_forecast`.
+    """
+    from .rolling import rolling_windows
+    combined = train.index.append(validation.index).append(test.index)
+    validation_start, validation_end = len(train), len(train) + len(validation)
+    test_start, test_end = validation_end, validation_end + len(test)
+    fig = go.Figure()
+    row = 0
+    for phase, region_start, region_end, context_color, horizon_color in (
+        ("HPO (Validierung)", validation_start, validation_end, "#a6cee3", "#ff7f0e"),
+        ("Test", test_start, test_end, "#b2df8a", "#d62728"),
+    ):
+        seen_context, seen_horizon = False, False
+        for window_start, window_end in rolling_windows(region_start, region_end, horizon, step):
+            context_start = max(0, window_start - context_length)
+            fig.add_trace(go.Scatter(x=[combined[context_start], combined[window_start - 1]], y=[row, row], mode="lines",
+                                      line=dict(color=context_color, width=10), name=f"{phase}: Kontext ({context_length} Tage)",
+                                      legendgroup=f"{phase}-context", showlegend=not seen_context))
+            fig.add_trace(go.Scatter(x=[combined[window_start], combined[window_end - 1]], y=[row, row], mode="lines",
+                                      line=dict(color=horizon_color, width=10), name=f"{phase}: Prognosehorizont ({horizon} Tage)",
+                                      legendgroup=f"{phase}-horizon", showlegend=not seen_horizon))
+            seen_context = seen_horizon = True
+            row += 1
+    fig.update_layout(title=title, xaxis_title="Datum", yaxis_title="Rollierendes Fenster (fortlaufender Index)",
+                       legend_title="Klicken zum Ein-/Ausblenden")
+    return fig
+
+def patchtst_epoch_schedule_figure(loss_history: dict, n_windows: int, update_epochs: int, title: str) -> go.Figure:
+    """Segments PatchTST's persisted loss history (concatenated across every rolling window's fit --
+    see `NeuralForecaster`) back into per-window epoch blocks: the *first* window's full initial fit
+    (early-stopped against `patience`, budget up to `epochs`), then every later window's short
+    `update_epochs`-long warm-start continuation. Reconstructed purely from the loss history's total
+    length, `n_windows`, and `update_epochs` -- every window after the first used exactly the same
+    `update_epochs` budget, so the first window's (variable, early-stopped) length is just the remainder.
+    """
+    from plotly.subplots import make_subplots
+    train_loss, validation_loss = loss_history["train"], loss_history["validation"]
+    total_epochs = len(train_loss)
+    first_window_epochs = total_epochs - (n_windows - 1) * update_epochs
+    epochs_per_window = [first_window_epochs] + [update_epochs] * (n_windows - 1)
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("Verlust je Epoche (fortlaufend, Fenstergrenzen gestrichelt)", "Epochen je rollierendem Fenster"))
+    x = list(range(1, total_epochs + 1))
+    fig.add_trace(go.Scatter(x=x, y=train_loss, mode="lines", name="Training"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=x, y=validation_loss, mode="lines", name="Validierung", line=dict(dash="dash")), row=1, col=1)
+    cursor = 0
+    for count in epochs_per_window[:-1]:
+        cursor += count
+        fig.add_vline(x=cursor + 0.5, line=dict(color="gray", dash="dot", width=1), row=1, col=1)
+
+    colors = ["#d62728"] + ["#1f77b4"] * (n_windows - 1)
+    fig.add_trace(go.Bar(x=list(range(1, n_windows + 1)), y=epochs_per_window, marker_color=colors,
+                          name="Epochen", showlegend=False), row=1, col=2)
+    fig.update_xaxes(title_text="Epoche (fortlaufend über alle Fenster)", row=1, col=1)
+    fig.update_yaxes(title_text="Loss", row=1, col=1)
+    fig.update_xaxes(title_text="Rollierendes Fenster (Testzeitraum)", row=1, col=2)
+    fig.update_yaxes(title_text="Anzahl Epochen", row=1, col=2)
+    fig.update_layout(title=title, legend_title="Klicken zum Ein-/Ausblenden")
+    return fig
+
 def loss_curves_figure(loss_histories: dict, title: str) -> go.Figure:
     """`loss_histories`: {model_name: {"train": [...], "validation": [...]}}, only for models that expose one.
 
