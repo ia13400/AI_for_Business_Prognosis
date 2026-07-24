@@ -1,0 +1,37 @@
+{
+  "signature": "64c2027900f87bb2d1bd27321cd86b95b11679629deba5da2f41de08950c60cb",
+  "inputs": {
+    "namespace": "multivariate",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "chronos2",
+    "hyperparameters": {
+      "model_id": "amazon/chronos-2",
+      "context_length": 512
+    },
+    "seed": 42,
+    "horizon": 20,
+    "step": 20,
+    "train_range": "2014-09-17 00:00:00:2024-06-28 00:00:00",
+    "validation_range": "2024-07-01 00:00:00:2025-06-27 00:00:00",
+    "test_range": "2025-06-30 00:00:00:2026-06-29 00:00:00",
+    "lead_time_checkpoints": [
+      1,
+      10,
+      20
+    ],
+    "approach": "multivariate-zero-shot-covariates",
+    "exogenous_columns": [
+      "dollar_index",
+      "silver",
+      "oil",
+      "sp500",
+      "vix",
+      "bitcoin"
+    ],
+    "mlflow_run_id": "f04421b251834c79bad97f8a03cd0fb6",
+    "runtime_seconds": 11.210329900030047
+  },
+  "best_params": {
+    "model_id": "amazon/chronos-2"
+  }
+}

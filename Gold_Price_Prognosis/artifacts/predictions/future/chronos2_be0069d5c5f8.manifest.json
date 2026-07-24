@@ -1,0 +1,11 @@
+{
+  "signature": "be0069d5c5f85dd0e4ea1d6f27118953bd17b102c9bf3bb9d586d34bd519d4d1",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "chronos2",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "multivariate-future-exogenous-persistence"
+  }
+}

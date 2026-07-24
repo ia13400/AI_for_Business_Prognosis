@@ -56,11 +56,13 @@ patchtst:
     batch_size: 64
 
 chronos:
-  enabled_original: true # every variant is toggled independently -- each has its own notebook cell/run_* function
-  enabled_bolt: true
-  enabled_t5_base: true # larger, still zero-shot siblings of the "original"/"bolt" small variants above
-  enabled_t5_large: true # ~710M parameters -- by far the largest model in this project; slow on CPU
-  enabled_bolt_base: true
+  enabled_original: false # every variant is toggled independently -- each has its own notebook cell/run_* function
+  enabled_bolt: false
+  enabled_t5_base: false # larger, still zero-shot siblings of the "original"/"bolt" small variants above
+  enabled_t5_large: true # ~710M parameters -- by far the largest model in this project; slow on CPU. Kept as the
+  # single univariate Chronos representative: best zero-shot accuracy of the five variants on this task (see
+  # summary.md) -- the other four are disabled (not deleted) so re-enabling any of them needs no code changes.
+  enabled_bolt_base: false
   context_length: 512 # tail-truncation of available history handed to the pretrained pipeline each window
   variants:
     original: "amazon/chronos-t5-small"
@@ -136,3 +138,12 @@ tft:
     dropout: 0.1
     learning_rate: 0.001
     batch_size: 64
+
+# Zero-shot, covariate-aware -- unlike every other Chronos variant above (which are
+# univariate-only, see `chronos:`), Chronos-2 natively accepts past/future exogenous
+# covariates, so it runs here as a zero-shot contender against the fitted multivariate
+# models rather than as a sixth line in the univariate comparison. No HPO/fine-tuning.
+chronos2:
+  enabled: true
+  model_id: "amazon/chronos-2"
+  context_length: 512

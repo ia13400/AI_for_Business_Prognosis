@@ -1,12 +1,12 @@
 import pandas as pd
 import plotly.graph_objects as go
 from gold_forecasting.interactive_plots import (combined_forecast_figure, error_by_lead_time_figure, loss_curves_figure,
-                                                  save_interactive_figure, correlation_heatmap_figure, leaderboard_figure,
+                                                  save_interactive_figure, save_static_figure, correlation_heatmap_figure, leaderboard_figure,
                                                   feature_importance_figure, residual_histogram_figure,
                                                   residual_boxplot_by_leadtime_figure, hpo_convergence_figure,
                                                   hpo_param_relationship_figure, exogenous_overview_figure,
                                                   patchtst_sliding_window_figure, patchtst_epoch_schedule_figure,
-                                                  portfolio_value_figure)
+                                                  portfolio_value_figure, polar_correlation_figure)
 
 def test_combined_forecast_figure_has_one_trace_per_series():
     index = pd.bdate_range("2024-01-01", periods=5)
@@ -149,6 +149,24 @@ def test_correlation_heatmap_figure_uses_fixed_scale_and_labels():
     assert heatmap.zmin == -1 and heatmap.zmax == 1
     assert heatmap.z[0][0] == 1.0  # self-correlation
 
+def test_polar_correlation_figure_labels_and_scale_placement():
+    correlation = pd.Series({"dollar_index": 0.9, "silver": -0.05, "oil": 0.4}, name="gold_usd")
+    fig = polar_correlation_figure(correlation, "test title")
+    bar = fig.data[0]
+    assert list(bar.theta) == [0, 120, 240]  # 3 categories -> 360/3 = 120 degrees apart
+    assert list(bar.customdata) == ["US-Dollar-Index", "Silber", "Öl"]
+    assert list(bar.r) == [0.9, 0.05, 0.4]
+    assert bar.marker.line.width and bar.marker.line.color == "white"  # visible seam between sectors
+    assert list(fig.layout.polar.angularaxis.ticktext) == ["US-Dollar-Index", "Silber", "Öl"]  # category names shown via explicit ticks
+    label_trace = fig.data[1]
+    assert list(label_trace.text) == ["+0.90", "-0.05", "+0.40"]
+    assert len(set(label_trace.r)) == 1  # every label sits at the same fixed radius, not each bar's own tip
+    scale_trace = fig.data[2]
+    assert scale_trace.text[-1] == "|Korrelation|" and len(set(scale_trace.theta)) == 1
+    # weakest-adjacent-pair gap: (dollar_index, silver)=0.95, (silver, oil)=0.45, (oil, dollar_index)=1.3
+    # -- the smallest is (silver, oil) at index 1, so the scale sits at the boundary after it: (1+0.5)*360/3=180
+    assert fig.layout.polar.radialaxis.angle % 360 == 180
+
 def test_patchtst_sliding_window_figure_one_context_and_horizon_bar_per_window():
     index = pd.bdate_range("2020-01-01", periods=180)
     train, validation, test = pd.Series(range(100), index=index[:100]), pd.Series(range(40), index=index[100:140]), pd.Series(range(40), index=index[140:180])
@@ -175,3 +193,9 @@ def test_save_interactive_figure_writes_self_contained_html(tmp_path):
     assert path.exists()
     html = path.read_text(encoding="utf-8")
     assert "plotly" in html.lower()
+
+def test_save_static_figure_writes_png(tmp_path):
+    fig = go.Figure(go.Scatter(x=[1, 2], y=[3, 4]))
+    path = save_static_figure(fig, tmp_path / "nested" / "chart.png")
+    assert path.exists()
+    assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"  # PNG file signature

@@ -24,6 +24,12 @@ _GRID = dict(showgrid=True, gridcolor="rgba(128,128,128,0.25)", zeroline=False)
 # label can land directly on a curve/marker and become unreadable where it overlaps.
 _CALLOUT = dict(bgcolor="rgba(255,255,255,0.88)", bordercolor="rgba(0,0,0,0.25)", borderwidth=1, borderpad=4)
 _TOGGLE = "Klicken zum Ein-/Ausblenden"
+# Centered, matplotlib-matching title -- for figures also exported as a static PNG (`save_static_figure`),
+# so the title looks the same as in this project's matplotlib PNGs (`plotting.py`, which centers titles by
+# default using matplotlib's default font, DejaVu Sans; "Arial, sans-serif" is the fallback if the kaleido
+# renderer doesn't have DejaVu Sans installed as a system font).
+def _centered_title(text):
+    return dict(text=text, x=0.5, xanchor="center", font=dict(family="DejaVu Sans, Arial, sans-serif"))
 
 def _grid(fig):
     fig.update_xaxes(**_GRID); fig.update_yaxes(**_GRID)
@@ -58,6 +64,14 @@ def save_interactive_figure(fig: go.Figure, path: Path) -> Path:
     """
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
     fig.write_html(str(path), include_plotlyjs="cdn")
+    return path
+
+def save_static_figure(fig: go.Figure, path: Path, width: int = 1400, height: int = 900, scale: int = 2) -> Path:
+    """Persist a Plotly figure as a static PNG (via kaleido) alongside its interactive HTML twin --
+    for artifacts that should exist as a plain image (e.g. for a report/appendix) without being
+    displayed a second time anywhere the interactive version already is."""
+    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_image(str(path), width=width, height=height, scale=scale)
     return path
 
 def combined_forecast_figure(combined, title: str) -> go.Figure:
@@ -245,7 +259,7 @@ def correlation_heatmap_figure(correlation, title: str) -> go.Figure:
     off_diag = values.copy(); np.fill_diagonal(off_diag, 0)
     i, j = np.unravel_index(np.argmax(np.abs(off_diag)), off_diag.shape)
     fig.add_annotation(x=columns[j], y=columns[i], text="Staerkstes Paar", showarrow=True, arrowhead=2, ay=-40, **_CALLOUT)
-    fig.update_layout(title=title)
+    fig.update_layout(title=_centered_title(title))
     _note(fig, "Methode: Pearson-Korrelationskoeffizient ueber die gesamte verfuegbare Historie (vor dem Split, "
                 "rein deskriptiv -- fliesst in kein Modelltraining ein). Ein einzelner Koeffizient ueber 24 Jahre "
                 "mittelt ueber sehr unterschiedliche Marktphasen; siehe die Zeitverlaufs-Uebersicht unten fuer "
@@ -261,24 +275,59 @@ def polar_correlation_figure(correlation_with_gold, title: str) -> go.Figure:
     """
     names = [display_series(k) for k in correlation_with_gold.index]
     values = correlation_with_gold.values
+    n = len(values)
     colors = ["#2a78d6" if v >= 0 else "#e34948" for v in values]
     labels = [f"{v:+.2f}" for v in values]
-    fig = go.Figure(go.Barpolar(r=[abs(v) for v in values], theta=names, marker_color=colors,
-                                 text=labels, hovertemplate="%{theta}: %{text}<extra></extra>"))
+    # Angular position is plain degrees throughout this figure (category index i -> i * 360/n), not
+    # Plotly's categorical theta -- a scale needs to sit in the *gap* between two bars (see below),
+    # which a category axis can't express; and once any trace on a category-typed angular axis uses
+    # a numeric theta, Plotly leaks a stray extra tick label showing that raw number. Explicit
+    # `width` replicates what the categorical axis gave bars automatically: each bar fills its own
+    # full 360/n-degree slot. `tickvals`/`ticktext` on the angular axis puts the real category names
+    # back where they belong.
+    slot = 360 / n
+    angles = [i * slot for i in range(n)]
+    fig = go.Figure(go.Barpolar(r=[abs(v) for v in values], theta=angles, width=[slot] * n, thetaunit="degrees",
+                                 marker=dict(color=colors, line=dict(color="white", width=2)),  # white outline -- a clear seam between adjacent sectors
+                                 text=labels, customdata=names, hovertemplate="%{customdata}: %{text}<extra></extra>"))
     # Barpolar's own `text` is hover-only -- it has no `textposition` equivalent to place labels
     # on the chart. A second Scatterpolar trace in `mode="text"`, one point per bar at the same
-    # angular position (`theta`) just past that bar's tip, puts each value on its own spoke
-    # instead of every label bunching up at a single spot.
-    label_radius = [min(1.08, abs(v) + 0.08) for v in values]
-    fig.add_trace(go.Scatterpolar(r=label_radius, theta=names, mode="text", text=labels,
-                                   textfont=dict(size=11, color="#333"), showlegend=False, hoverinfo="skip"))
-    fig.update_layout(title=title, showlegend=False,
-                       polar=dict(radialaxis=dict(range=[0, 1.15], tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
-                                                   title="|Korrelation|", angle=90)))
+    # angular position, puts each value on its own spoke instead of every label bunching up at a
+    # single spot. All labels sit at the same fixed radius near the outer rim -- directly under that
+    # bar's own category-name label (drawn by the angular axis just beyond the plot's edge) -- rather
+    # than at each bar's own (very different) tip radius, which used to crowd short bars' labels into
+    # unreadable clutter near the center. `mode="text"` in Scatterpolar always renders screen-horizontal
+    # regardless of angular position, unlike the native radial-axis tick labels handled below.
+    label_radius = [1.14] * n
+    fig.add_trace(go.Scatterpolar(r=label_radius, theta=angles, thetaunit="degrees", mode="text", text=labels,
+                                   textfont=dict(size=17, color="#222", family="DejaVu Sans, Arial, sans-serif"),
+                                   showlegend=False, hoverinfo="skip"))
+    # The radial 0..1 scale is drawn through the angular *gap* between the two weakest adjacent
+    # bars -- not through either bar's own center, which is where that bar's own category-name and
+    # value-label already sit (guaranteed to collide with the scale there). Plotly's native
+    # radialaxis tick labels also rotate to align with whatever angle the axis itself is drawn at,
+    # which becomes unreadable (sideways/upside-down) at any non-cardinal angle -- there is no
+    # reliable `tickangle` value that cancels this out. So the native tick labels/title are hidden
+    # and the scale is instead drawn as its own Scatterpolar text trace, which (like the value
+    # labels above) always renders screen-horizontal no matter which direction it points.
+    pair_sums = [abs(values[i]) + abs(values[(i + 1) % n]) for i in range(n)]
+    gap_idx = min(range(n), key=lambda i: pair_sums[i])
+    scale_angle = (gap_idx + 0.5) * slot
+    scale_ticks = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    fig.add_trace(go.Scatterpolar(r=scale_ticks + [1.12], theta=[scale_angle] * (len(scale_ticks) + 1), thetaunit="degrees",
+                                   mode="text", text=[f"{t:g}" for t in scale_ticks] + ["|Korrelation|"],
+                                   textfont=dict(size=14, color="#444", family="DejaVu Sans, Arial, sans-serif"),
+                                   showlegend=False, hoverinfo="skip"))
+    fig.update_layout(title=_centered_title(title), showlegend=False, width=900, height=900,
+                       polar=dict(radialaxis=dict(range=[0, 1.22], tickvals=scale_ticks, showticklabels=False, ticks="",
+                                                   angle=scale_angle),
+                                   angularaxis=dict(tickmode="array", tickvals=angles, ticktext=names,
+                                                     tickfont=dict(size=16, color="#222"))))
     _note(fig, "Methode: radiale Balkenlaenge = Betrag der Pearson-Korrelation mit dem Goldpreis, Farbe = Vorzeichen "
-                "(blau = positiv, rot = negativ); der exakte, vorzeichenbehaftete Wert steht am Balken. Laenge "
-                "zeigt die Staerke, Farbe die Richtung des Zusammenhangs -- unabhaengig von der Reihenfolge der "
-                "Variablen gut vergleichbar.")
+                "(blau = positiv, rot = negativ); der exakte, vorzeichenbehaftete Wert steht unter dem Namen jeder "
+                "Variable. Laenge zeigt die Staerke, Farbe die Richtung des Zusammenhangs -- unabhaengig von der "
+                "Reihenfolge der Variablen gut vergleichbar. Die Skala ist an der Position des schwaechsten Balkens "
+                "eingezeichnet, damit sie nie von einem hohen Balken ueberdeckt wird.")
     return fig
 
 def portfolio_value_figure(combined, starting_capital: float, title: str) -> go.Figure:

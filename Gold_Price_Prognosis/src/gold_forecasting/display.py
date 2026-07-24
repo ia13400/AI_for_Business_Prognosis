@@ -23,6 +23,7 @@ _MODEL_NAMES = {
     "chronos_t5_base": "Chronos (T5, Base)",
     "chronos_t5_large": "Chronos (T5, Large)",
     "chronos_bolt_base": "Chronos (Bolt, Base)",
+    "chronos2": "Chronos-2",
     "cheater": "Cheater (perfekte Voraussicht)",
 }
 

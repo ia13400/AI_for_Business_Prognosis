@@ -97,3 +97,11 @@ def test_chronos_zero_shot_forecast_window():
     instance = ChronosForecaster(config={"model_id": "amazon/chronos-bolt-small", "context_length": 64}, device="cpu")
     prediction = instance.forecast_window(SERIES.iloc[:90].values, 3)
     assert prediction.shape == (3,) and np.isfinite(prediction).all()
+
+def test_chronos2_forecast_window_with_covariates():
+    """Downloads amazon/chronos-2 on first run; cached locally by huggingface_hub afterwards. Unlike the other
+    Chronos variants above, Chronos-2 takes past/future covariates directly, so this exercises that path with MULTI/EXOG."""
+    from gold_forecasting.models.chronos2 import Chronos2Forecaster
+    instance = Chronos2Forecaster(config={"model_id": "amazon/chronos-2", "context_length": 64}, device="cpu")
+    prediction = instance.forecast_window(MULTI.iloc[:90], 3, future_exogenous=EXOG.iloc[90:93].values)
+    assert prediction.shape == (3,) and np.isfinite(prediction).all()

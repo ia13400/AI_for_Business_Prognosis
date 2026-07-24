@@ -73,7 +73,7 @@ def _experiment_tab(namespace: str, description: str):
 
 with tabs[0]:
     st.subheader("Projektüberblick")
-    st.write("Zielvariable: täglicher Goldpreis in USD je Feinunze. Experiment 1 (univariat, ohne exogene Variablen): Naiv, gleitender Durchschnitt, SARIMA, PatchTST, Chronos Zero-Shot (Original, Bolt, T5-Base, T5-Large, Bolt-Base). Experiment 2 (multivariat, mit exogenen Variablen): Naiv, gleitender Durchschnitt, SARIMAX, XGBoost (Preisniveau), XGBoost (Differenzen), TFT (nativ, kompakt).")
+    st.write("Zielvariable: täglicher Goldpreis in USD je Feinunze. Experiment 1 (univariat, ohne exogene Variablen): Naiv, gleitender Durchschnitt, SARIMA, PatchTST, Chronos (T5, Large) Zero-Shot. Experiment 2 (multivariat, mit exogenen Variablen): Naiv, gleitender Durchschnitt, SARIMAX, XGBoost (Preisniveau), XGBoost (Differenzen), TFT (nativ, kompakt), Chronos-2 Zero-Shot (kovariat-bewusst). Die übrigen vier univariaten Chronos-Varianten sind deaktiviert (konfigurierbar in `configs/models.yaml`) -- je Chronos-Generation bleibt genau ein Modell aktiv.")
     st.write("Validierungs- und Testzeitraum sind je 1 Jahr lang; die Auswertung erfolgt rollierend (walk-forward, Standard: 20 Tage Horizont, 20 Tage Schritt). Alle Werte sind in `configs/experiments.yaml` (`split`, `rolling`) konfigurierbar; das Enddatum der heruntergeladenen Daten steht in `configs/data.yaml`.")
     if data is None: st.info("Bitte zuerst Daten herunterladen und Experimente ausführen.")
     else:
@@ -95,9 +95,9 @@ with tabs[1]:
         st.dataframe(data.corr(numeric_only=True).style.background_gradient(cmap="RdBu",vmin=-1,vmax=1))
     else: st.info("Keine aufbereiteten Daten gefunden.")
 with tabs[2]:
-    _experiment_tab("univariate","Experiment 1: Prognose ohne exogene Variablen (SARIMA, PatchTST, Chronos) gegen Naiv und gleitenden Durchschnitt.")
+    _experiment_tab("univariate","Experiment 1: Prognose ohne exogene Variablen (SARIMA, PatchTST, Chronos T5 Large) gegen Naiv und gleitenden Durchschnitt.")
 with tabs[3]:
-    _experiment_tab("multivariate","Experiment 2: Prognose mit exogenen Variablen aus data.yaml (SARIMAX, XGBoost, XGBoost-Differenzen, TFT). Rückblickender Test mit tatsächlich realisierten exogenen Werten (kein unbekannt-zukünftiges Szenario). XGBoost (Differenzen) sagt Renditen statt Preisniveaus vorher -- siehe Notebook Kapitel 4.2 fuer die Begruendung.")
+    _experiment_tab("multivariate","Experiment 2: Prognose mit exogenen Variablen aus data.yaml (SARIMAX, XGBoost, XGBoost-Differenzen, TFT, Chronos-2 Zero-Shot). Rückblickender Test mit tatsächlich realisierten exogenen Werten (kein unbekannt-zukünftiges Szenario). XGBoost (Differenzen) sagt Renditen statt Preisniveaus vorher -- siehe Notebook Kapitel 4.2 fuer die Begruendung. Chronos-2 ist das einzige Chronos-Modell mit nativer Unterstützung für exogene Variablen und läuft hier zero-shot ohne eigenes Training.")
 with tabs[4]:
     st.subheader("Handelsbot-Backtest")
     st.caption("Vereinfachte Backtest-Simulation je Modell (Notebook Kapitel 5.2): Startkapital 10.000 USD, immer 100% Bargeld oder 100% Gold, keine Gebuehren. Entscheidung einmal pro rollierendem 20-Tage-Schritt anhand der Prognose fuer das Ende dieses Schritts -- Kauf nur bei prognostizierter Rendite > 5 USD, Verkauf nur bei < -5 USD. Der 'cheater'-Bot kennt die zukuenftigen Realpreise und kann taeglich entscheiden -- eine theoretische Obergrenze, kein echtes Modell, keine Anlageberatung.")
