@@ -5,6 +5,7 @@ from gold_forecasting.interactive_plots import (combined_forecast_figure, error_
                                                   feature_importance_figure, residual_histogram_figure,
                                                   residual_boxplot_by_leadtime_figure, hpo_convergence_figure,
                                                   hpo_param_relationship_figure, exogenous_overview_figure,
+                                                  exogenous_vs_gold_grid_figure,
                                                   patchtst_sliding_window_figure, patchtst_epoch_schedule_figure,
                                                   portfolio_value_figure, polar_correlation_figure)
 
@@ -132,6 +133,19 @@ def test_exogenous_overview_figure_one_row_per_column():
     fig = exogenous_overview_figure(data, ["silver", "vix"], "test title")
     assert len(fig.data) == 2
 
+def test_exogenous_vs_gold_grid_figure_two_rows_three_cols_dual_axis():
+    index = pd.bdate_range("2024-01-01", periods=5)
+    columns = ["silver", "oil", "sp500", "vix", "bitcoin", "dollar_index"]
+    data = pd.DataFrame({"gold_usd": range(5), **{c: range(i, i + 5) for i, c in enumerate(columns)}}, index=index)
+    fig = exogenous_vs_gold_grid_figure(data, columns, "gold_usd", "test title")
+    # one exogenous trace + one gold trace per panel, 6 panels
+    assert len(fig.data) == 2 * len(columns)
+    # 2 rows x 3 cols, each with a left+right axis pair -> 6 panels x 2 axes = 12 y-axes
+    assert sum(1 for _ in fig.select_yaxes()) == 2 * len(columns)
+    # every panel's x-range is pinned to data.index's full min/max
+    for ax in fig.select_xaxes():
+        assert ax.range is not None
+
 def test_loss_curves_figure_pairs_train_and_validation_per_model():
     loss_histories = {
         "patchtst": {"train": [3.0, 2.0, 1.0], "validation": [3.5, 2.5, 1.5]},
@@ -199,3 +213,9 @@ def test_save_static_figure_writes_png(tmp_path):
     path = save_static_figure(fig, tmp_path / "nested" / "chart.png")
     assert path.exists()
     assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"  # PNG file signature
+
+def test_save_static_figure_strips_toggle_hint_but_restores_it(tmp_path):
+    fig = go.Figure(go.Scatter(x=[1, 2], y=[3, 4], name="Gold"))
+    fig.update_layout(legend_title_text="Klicken zum Ein-/Ausblenden")
+    save_static_figure(fig, tmp_path / "chart.png")
+    assert fig.layout.legend.title.text == "Klicken zum Ein-/Ausblenden"  # restored for the (still-interactive) figure object

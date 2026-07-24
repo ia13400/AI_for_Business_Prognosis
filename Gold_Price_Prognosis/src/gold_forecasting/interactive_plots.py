@@ -69,9 +69,22 @@ def save_interactive_figure(fig: go.Figure, path: Path) -> Path:
 def save_static_figure(fig: go.Figure, path: Path, width: int = 1400, height: int = 900, scale: int = 2) -> Path:
     """Persist a Plotly figure as a static PNG (via kaleido) alongside its interactive HTML twin --
     for artifacts that should exist as a plain image (e.g. for a report/appendix) without being
-    displayed a second time anywhere the interactive version already is."""
+    displayed a second time anywhere the interactive version already is.
+
+    Temporarily strips the "click to toggle" legend hint (`_TOGGLE`) for the PNG only -- it's correct
+    on the interactive HTML/notebook version but misleading on a static image, where clicking a legend
+    entry does nothing. Restored immediately after, so a subsequent `display(fig)` of the same figure
+    object still shows the accurate interactive hint.
+    """
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
-    fig.write_image(str(path), width=width, height=height, scale=scale)
+    had_toggle_hint = fig.layout.legend.title.text == _TOGGLE
+    if had_toggle_hint:
+        fig.update_layout(legend_title_text=None)
+    try:
+        fig.write_image(str(path), width=width, height=height, scale=scale)
+    finally:
+        if had_toggle_hint:
+            fig.update_layout(legend_title_text=_TOGGLE)
     return path
 
 def combined_forecast_figure(combined, title: str) -> go.Figure:
@@ -247,6 +260,50 @@ def exogenous_overview_figure(data, columns, title: str) -> go.Figure:
                 "einzelner Korrelationskoeffizient (vorherige Grafik) mittelt ueber 24 Jahre sehr unterschiedlicher "
                 "Marktphasen -- diese Ansicht zeigt, ob die Beziehung zum Goldpreis im Zeitverlauf stabil oder "
                 "regimeabhaengig ist.", date_axis=True)
+    return fig
+
+def exogenous_vs_gold_grid_figure(data, columns, gold_column: str, title: str) -> go.Figure:
+    """2 rows x 3 columns, one exogenous variable per panel -- that variable on the left y-axis,
+    the gold price on a shared-color right y-axis, so each panel makes its own scale-independent
+    co-movement comparison instead of one shared axis for everything (as `exogenous_overview_figure`
+    plots it, without gold).
+
+    `data`: the full aligned frame. Every panel's x-axis is pinned to `data.index`'s full min/max
+    explicitly, so gold and every exogenous variable are shown over exactly the same period -- the
+    period the gold price itself covers -- even where a series (e.g. Bitcoin) only has real values
+    starting partway through and is otherwise blank at the start.
+    """
+    from plotly.subplots import make_subplots
+    columns = list(columns)
+    cols = 3
+    rows = -(-len(columns) // cols)  # ceil division -- stays correct if the exogenous set ever grows/shrinks
+    # plain python datetimes, not pandas Timestamps -- kaleido's static-export JSON encoder (orjson)
+    # can't serialize a Timestamp, so this avoids a latent trap if this figure is ever passed to save_static_figure
+    x_range = [data.index.min().to_pydatetime(), data.index.max().to_pydatetime()]
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=[display_series(c) for c in columns],
+                         specs=[[{"secondary_y": True}] * cols for _ in range(rows)],
+                         horizontal_spacing=0.08, vertical_spacing=0.12)
+    for i, column in enumerate(columns):
+        row, col = divmod(i, cols)
+        row, col = row + 1, col + 1
+        fig.add_trace(go.Scatter(x=data.index, y=data[column], mode="lines", name=display_series(column),
+                                  line=dict(color="#2a78d6"), showlegend=False), row=row, col=col, secondary_y=False)
+        fig.add_trace(go.Scatter(x=data.index, y=data[gold_column], mode="lines", name=display_series(gold_column),
+                                  line=dict(color="#c9a227"), showlegend=(i == 0)), row=row, col=col, secondary_y=True)
+        fig.update_xaxes(range=x_range, row=row, col=col)
+        # no axis title text (it collides with the neighboring panel's axis title in the narrow gap
+        # between columns) -- the subplot title already names the blue series, and the tick label
+        # color alone (blue vs. gold) is enough to tell the two axes apart once colors are established
+        # by the single shared "Gold" legend entry.
+        fig.update_yaxes(tickfont=dict(color="#2a78d6"), row=row, col=col, secondary_y=False)
+        fig.update_yaxes(tickfont=dict(color="#c9a227"), row=row, col=col, secondary_y=True, showgrid=False)
+    fig.update_layout(title=_centered_title(title), height=340 * rows, legend_title=_TOGGLE)
+    _grid(fig)
+    _note(fig, "Methode: je Panel eine exogene Variable (linke Achse, blau) gegen den Goldpreis (rechte Achse, gold) -- "
+                "beide ueber denselben Zeitraum wie der Goldpreis selbst (data.index.min() bis data.index.max()); "
+                "ein Panel, das erst spaeter beginnt (z. B. Bitcoin), hat schlicht noch keine realen Werte davor. "
+                "Zwei unabhaengige Achsen je Panel, da Wertebereiche stark unterschiedlich sind (z. B. VIX 10-80 vs. "
+                "Gold 250-5300 USD) -- optischer Gleichlauf zeigt hier nur relative, keine absolute Bewegung.", date_axis=True)
     return fig
 
 def correlation_heatmap_figure(correlation, title: str) -> go.Figure:
