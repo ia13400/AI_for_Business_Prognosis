@@ -10,30 +10,39 @@ the point a label actually gets rendered (trace name, axis category, title).
 import re
 
 _MODEL_NAMES = {
-    "naive": "Naive",
-    "moving_average": "Moving Average",
+    "naive": "Naiv",
+    "moving_average": "Gleitender Durchschnitt",
     "sarima": "SARIMA",
     "sarimax": "SARIMAX",
     "patchtst": "PatchTST",
     "xgboost": "XGBoost",
-    "xgboost_diff": "XGBoost (Returns)",
+    "xgboost_diff": "XGBoost (Differenzen)",
     "tft": "TFT",
     "chronos_original": "Chronos (Original)",
     "chronos_bolt": "Chronos (Bolt)",
     "chronos_t5_base": "Chronos (T5, Base)",
     "chronos_t5_large": "Chronos (T5, Large)",
     "chronos_bolt_base": "Chronos (Bolt, Base)",
-    "cheater": "Cheater (Perfect Foresight)",
+    "cheater": "Cheater (perfekte Voraussicht)",
 }
 
+# Proper/product names (algorithms, tickers, index names) are left untranslated, matching
+# standard German financial/ML usage -- only the generic descriptive English words are translated.
 _SERIES_NAMES = {
     "gold_usd": "Gold",
-    "dollar_index": "Dollar Index",
-    "silver": "Silver",
-    "oil": "Oil",
+    "dollar_index": "US-Dollar-Index",
+    "silver": "Silber",
+    "oil": "Öl",
     "sp500": "S&P 500",
     "vix": "VIX",
     "bitcoin": "Bitcoin",
+}
+
+_NAMESPACE_NAMES = {
+    "univariate": "Univariat",
+    "multivariate": "Multivariat",
+    "all models": "Alle Modelle",
+    "future": "Zukunft",
 }
 
 def display_name(key: str) -> str:
@@ -45,8 +54,8 @@ def display_series(key: str) -> str:
     return _SERIES_NAMES.get(key, key)
 
 def display_namespace(namespace: str) -> str:
-    """A namespace/experiment label, e.g. `"univariate"` -> `"Univariate"`, `"all models"` -> `"All Models"`."""
-    return namespace.title()
+    """A namespace/experiment label, e.g. `"univariate"` -> `"Univariat"`, `"all models"` -> `"Alle Modelle"`."""
+    return _NAMESPACE_NAMES.get(namespace, namespace.title())
 
 def strip_signature(stem: str) -> str:
     """Strip a trailing `_<12-hex-char signature>` from an artifact filename stem, e.g.

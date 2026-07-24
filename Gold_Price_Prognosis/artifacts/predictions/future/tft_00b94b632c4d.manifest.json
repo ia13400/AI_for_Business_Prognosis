@@ -1,0 +1,11 @@
+{
+  "signature": "00b94b632c4dc28e4770d07ed62aa04e6d847b935d07fda757865e045a36913a",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "tft",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "multivariate-future-exogenous-persistence"
+  }
+}

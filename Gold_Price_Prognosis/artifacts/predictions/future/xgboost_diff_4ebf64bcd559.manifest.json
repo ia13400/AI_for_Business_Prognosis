@@ -1,0 +1,11 @@
+{
+  "signature": "4ebf64bcd559ccbb8b92cc37882c125221981101393fbca17ecda997d5407d02",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "xgboost_diff",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "multivariate-future-exogenous-persistence"
+  }
+}

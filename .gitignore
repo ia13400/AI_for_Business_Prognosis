@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+# Claude Code project settings/state -- local to this machine, not meant for the remote.
+.claude/
 Gold_Price_Prognosis/data/raw/*
 Gold_Price_Prognosis/data/interim/*
 Gold_Price_Prognosis/data/processed/*

@@ -128,8 +128,8 @@ def compare_results(results: dict, namespace: str, data_hash: str):
     first = next(iter(results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
     for name, r in results.items(): combined[name] = r["predictions"]["predicted"]
-    forecast_fig = combined_forecast_figure(combined, f"{display_namespace(namespace)}: model comparison")
-    lead_time_fig = error_by_lead_time_figure(metrics, f"{display_namespace(namespace)}: MAE by lead time")
+    forecast_fig = combined_forecast_figure(combined, f"{display_namespace(namespace)}: Modellvergleich")
+    lead_time_fig = error_by_lead_time_figure(metrics, f"{display_namespace(namespace)}: MAE nach Lead-Time")
     return metrics.sort_values(["horizon", "mae"]), forecast_fig, lead_time_fig
 
 def compare_error_by_day(results: dict, namespace: str, train, horizon: int):
@@ -152,7 +152,7 @@ def compare_error_by_day(results: dict, namespace: str, train, horizon: int):
         day_metrics.insert(0, "model", name)
         frames.append(day_metrics)
     metrics = pd.concat(frames, ignore_index=True)
-    fig = error_by_lead_time_figure(metrics, f"{display_namespace(namespace)}: MAE by day (1..{horizon})")
+    fig = error_by_lead_time_figure(metrics, f"{display_namespace(namespace)}: MAE nach Tag (1..{horizon})")
     return metrics.sort_values(["horizon", "mae"]), fig
 
 def compare_all_results(univariate_results: dict, multivariate_results: dict, data_hash: str):
@@ -163,7 +163,7 @@ def compare_all_results(univariate_results: dict, multivariate_results: dict, da
     first = next(iter(all_results.values()))["predictions"]
     combined = pd.DataFrame({"actual": first["actual"]})
     for name, r in all_results.items(): combined[name] = r["predictions"]["predicted"]
-    forecast_fig = combined_forecast_figure(combined, f"{display_namespace("all models")}: comparison")
+    forecast_fig = combined_forecast_figure(combined, f"{display_namespace("all models")}: Vergleich")
     return metrics.sort_values(["horizon", "mae"]), forecast_fig
 
 def compare_all_error_by_day(univariate_results: dict, multivariate_results: dict, train, horizon: int):
@@ -176,21 +176,21 @@ def compare_leaderboard(results: dict, namespace: str, metric: str = "mae"):
     _require_results(results, namespace)
     metrics = pd.concat([r["metrics"] for r in results.values()], ignore_index=True)
     complete = metrics[metrics["horizon"] == "complete"]
-    return leaderboard_figure(complete, f"{display_namespace(namespace)}: leaderboard ({metric})", metric)
+    return leaderboard_figure(complete, f"{display_namespace(namespace)}: Rangliste ({metric})", metric)
 
 def compare_residual_diagnostics(results: dict, namespace: str):
     """Residual histogram + boxplot-by-lead-time for every model in `results`, reusing each model's already-cached `rolling_result` -- no retraining."""
     _require_results(results, namespace)
     residuals = {name: r["rolling_result"]["actual"] - r["rolling_result"]["predicted"] for name, r in results.items()}
-    histogram_fig = residual_histogram_figure(residuals, f"{display_namespace(namespace)}: residual distribution")
-    boxplot_fig = residual_boxplot_by_leadtime_figure({name: r["rolling_result"] for name, r in results.items()}, f"{display_namespace(namespace)}: residual spread by lead time")
+    histogram_fig = residual_histogram_figure(residuals, f"{display_namespace(namespace)}: Residuenverteilung")
+    boxplot_fig = residual_boxplot_by_leadtime_figure({name: r["rolling_result"] for name, r in results.items()}, f"{display_namespace(namespace)}: Residuenstreuung nach Lead-Time")
     return histogram_fig, boxplot_fig
 
 def compare_loss_curves(results: dict, namespace: str):
     """Interactive train/validation loss-curve figure for models that expose `loss_history` (PatchTST, TFT, XGBoost); None if none do."""
     loss_histories = {name: r["loss_history"] for name, r in results.items() if r.get("loss_history")}
     if not loss_histories: return None
-    return loss_curves_figure(loss_histories, f"{display_namespace(namespace)}: training/validation loss")
+    return loss_curves_figure(loss_histories, f"{display_namespace(namespace)}: Trainings-/Validierungsverlust")
 
 def compare_trading_bots(results: dict, namespace: str, prior_actual: float, horizon: int, data_hash: str,
                           starting_capital: float = 10_000.0, threshold: float = 5.0):
@@ -229,17 +229,26 @@ def compare_trading_bots(results: dict, namespace: str, prior_actual: float, hor
     summary = summary.sort_values("pnl", ascending=False)
 
     wide = portfolio_timeseries.pivot(index="date", columns="model", values="portfolio_value")
-    timeseries_fig = portfolio_value_figure(wide, starting_capital, f"{display_namespace(namespace)}: portfolio value (trading-bot backtest)")
+    timeseries_fig = portfolio_value_figure(wide, starting_capital, f"{display_namespace(namespace)}: Portfoliowert (Handelsbot-Backtest)")
     pnl_png_path = plot_pnl_bar(summary, starting_capital, data_hash)
     return portfolio_timeseries, summary, timeseries_fig, pnl_png_path
 
-def run_future(model, name, full_series, horizon, data_hash, seed, meta, force_retrain=False):
-    """One-shot genuine future forecast beyond the data's end (Kapitel 6, univariate models only).
+def run_future(model, name, full_series, horizon, data_hash, seed, meta, force_retrain=False, future_exogenous=None):
+    """One-shot genuine future forecast beyond the data's end (Kapitel 6).
 
     Not a rolling evaluation -- there is no real future data to roll forward
     against. `forecast_window` is called exactly once; for models with
     `retrain_each_step` semantics this is simply their first (and only) fit,
     using the entire available history.
+
+    `full_series`/`future_exogenous`: for univariate models, `full_series` is
+    a plain Series and `future_exogenous` is left `None`. For multivariate
+    models, `full_series` is a DataFrame (target as column 0, exogenous
+    columns after) and `future_exogenous` is a `(horizon, n_exogenous)` array
+    -- there is no real future data for the exogenous columns either, so the
+    caller must supply an explicit assumption (e.g. last-value persistence);
+    `meta["approach"]` should name that assumption so the cache signature
+    changes if it's ever revised.
     """
     ensure_directories()
     inputs = {"namespace": "future", "data_hash": data_hash, "model": name, "horizon": horizon, "seed": seed, **meta}
@@ -249,7 +258,7 @@ def run_future(model, name, full_series, horizon, data_hash, seed, meta, force_r
     prediction_path.parent.mkdir(parents=True, exist_ok=True)
     if not (prediction_path.exists() and manifest.exists() and not force_retrain):
         dates = pd.bdate_range(full_series.index.max() + pd.offsets.BDay(), periods=horizon)
-        predicted = model.forecast_window(full_series, horizon)
+        predicted = model.forecast_window(full_series, horizon, future_exogenous=future_exogenous)
         pd.DataFrame({"date": dates, "predicted": predicted}).to_csv(prediction_path, index=False)
         manifest.write_text(json.dumps({"signature": signature, "inputs": inputs}, indent=2, default=str), encoding="utf-8")
     return pd.read_csv(prediction_path, parse_dates=["date"], index_col="date")

@@ -7,10 +7,13 @@ clicking a legend entry toggles that model's trace on/off.
 
 Every chart applies scientific model/series display names (`display.py`),
 an explicit light grid where a shared reference grid aids reading values, and
-a short methodology note pinned below the plot -- consistent presentation
-for an academic context. Underlying data (dict keys, DataFrame columns)
-stays snake_case throughout; display names are applied only at render time.
+a short, centered methodology note pinned below the plot -- consistent
+presentation for an academic context. Underlying data (dict keys, DataFrame
+columns) stays snake_case throughout; display names are applied only at
+render time. All user-facing text (titles, axis labels, legends, notes) is
+German.
 """
+import textwrap
 from pathlib import Path
 import plotly.graph_objects as go
 from .display import display_name, display_series
@@ -20,19 +23,29 @@ _GRID = dict(showgrid=True, gridcolor="rgba(128,128,128,0.25)", zeroline=False)
 # the `_note()` caption below the axes, which already lives in empty margin) -- without this, a
 # label can land directly on a curve/marker and become unreadable where it overlaps.
 _CALLOUT = dict(bgcolor="rgba(255,255,255,0.88)", bordercolor="rgba(0,0,0,0.25)", borderwidth=1, borderpad=4)
+_TOGGLE = "Klicken zum Ein-/Ausblenden"
 
 def _grid(fig):
     fig.update_xaxes(**_GRID); fig.update_yaxes(**_GRID)
     return fig
 
-def _note(fig, text, bottom_margin=100):
-    """A short methodology/interpretation caption pinned below the plot area, a fixed
-    pixel distance down (`yshift`, not a paper-fraction offset, so this stays correctly
-    placed regardless of the figure's own height) -- explains the method behind the chart
-    and how to read it, matching an academic figure's caption."""
-    fig.add_annotation(x=0, y=0, xref="paper", yref="paper", yshift=-(bottom_margin - 15),
-                        xanchor="left", yanchor="top", showarrow=False, align="left",
-                        font=dict(size=10.5, color="#555"), text=text)
+def _note(fig, text, chars_per_line=125, date_axis=False):
+    """A short, centered methodology caption pinned below the plot area -- the text is explicitly
+    wrapped (Plotly does not auto-wrap annotation text, so a long, un-wrapped note would run past
+    the figure's right edge and get clipped) to a width tuned for a typical rendered figure width.
+    The reserved bottom margin is sized to the resulting number of lines, so the note is never
+    cropped and never reserves more room than it actually needs. `y=0`/`yref="paper"` is the bottom
+    of the *plot area* (the axis line itself) -- the x-axis tick labels and axis title are drawn
+    below that, inside the margin, so `top_gap` must clear both before the note text starts.
+    `date_axis`: a date x-axis renders a stacked two-line tick label (e.g. "Jan 14" over "2024"),
+    which needs more clearance than a plain single-line numeric/category axis -- pass `True` for
+    any chart whose x-axis is a date/time series."""
+    lines = textwrap.wrap(text, width=chars_per_line) or [text]
+    top_gap, line_height, bottom_pad = (55 if date_axis else 40), 16, 6
+    bottom_margin = top_gap + len(lines) * line_height + bottom_pad
+    fig.add_annotation(x=0.5, y=0, xref="paper", yref="paper", yshift=-top_gap,
+                        xanchor="center", yanchor="top", showarrow=False, align="center",
+                        font=dict(size=10.5, color="#555"), text="<br>".join(lines))
     fig.update_layout(margin=dict(b=bottom_margin))
     return fig
 
@@ -50,18 +63,18 @@ def save_interactive_figure(fig: go.Figure, path: Path) -> Path:
 def combined_forecast_figure(combined, title: str) -> go.Figure:
     """`combined`: DataFrame with an 'actual' column plus one column per model."""
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=combined.index, y=combined["actual"], name="Actual", line=dict(color="black", width=2)))
+    fig.add_trace(go.Scatter(x=combined.index, y=combined["actual"], name="Tatsächlich", line=dict(color="black", width=2)))
     for name in combined.columns:
         if name == "actual": continue
         fig.add_trace(go.Scatter(x=combined.index, y=combined[name], name=display_name(name), mode="lines"))
     last_date, last_actual = combined.index[-1], combined["actual"].iloc[-1]
-    fig.add_annotation(x=last_date, y=last_actual, text=f"Last actual: {last_actual:,.0f} USD", showarrow=True, arrowhead=2, ax=40, ay=-40, **_CALLOUT)
-    fig.update_layout(title=title, xaxis_title="Date", yaxis_title="USD per troy ounce",
-                       legend_title="Click to toggle", hovermode="x unified")
+    fig.add_annotation(x=last_date, y=last_actual, text=f"Letzter Wert: {last_actual:,.0f} USD", showarrow=True, arrowhead=2, ax=40, ay=-40, **_CALLOUT)
+    fig.update_layout(title=title, xaxis_title="Datum", yaxis_title="USD je Feinunze",
+                       legend_title=_TOGGLE, hovermode="x unified")
     _grid(fig)
-    _note(fig, "Method: rolling-origin (walk-forward) forecasts concatenated across all test-period windows -- "
-                "each point is that model's prediction for that date, made using only data available before the "
-                "20-day window containing it began.")
+    _note(fig, "Methode: rollierende (walk-forward) Prognosen ueber alle Testfenster aneinandergereiht -- "
+                "jeder Punkt ist die Vorhersage des jeweiligen Modells fuer dieses Datum, erstellt nur mit "
+                "Daten, die vor Beginn des zugehoerigen 20-Tage-Fensters verfuegbar waren.", date_axis=True)
     return fig
 
 def error_by_lead_time_figure(metrics, title: str, metric: str = "mae", y_label: str | None = None) -> go.Figure:
@@ -79,17 +92,18 @@ def error_by_lead_time_figure(metrics, title: str, metric: str = "mae", y_label:
     best_idx = part[metric].idxmax() if higher_is_better else part[metric].idxmin()
     best = part.loc[best_idx]
     fig.add_annotation(x=best["horizon"], y=best[metric], showarrow=True, arrowhead=2, ay=-45, ax=30,
-                        text=f"Best: {display_name(best['model'])} ({best[metric]:.2f})", **_CALLOUT)
-    fig.update_layout(title=title, xaxis_title="Lead time (days)", yaxis_title=y_label or metric.upper(), legend_title="Click to toggle")
+                        text=f"Bester Wert: {display_name(best['model'])} ({best[metric]:.2f})", **_CALLOUT)
+    fig.update_layout(title=title, xaxis_title="Lead-Time (Tage)", yaxis_title=y_label or metric.upper(), legend_title=_TOGGLE)
     _grid(fig)
-    metric_definition=("Directional accuracy = the fraction of forecast points where the predicted price change "
-                        "(predicted minus the last known actual) has the same sign as the actual price change "
-                        "(actual minus the last known actual) -- 0.5 is coin-flip, 1.0 means every up/down move "
-                        "was called correctly regardless of magnitude. ") if metric=="directional_accuracy" else ""
-    _note(fig, f"Method: {metric_definition}{metric.replace('_', ' ').capitalize() if metric_definition else metric.replace('_', ' ')} "
-                "computed across every rolling-origin test window, grouped by lead-time position within each 20-day "
-                "window (day 1 = next-day forecast, day 20 = full-horizon forecast) -- always a slice of the same "
-                f"forecast, never a different horizon. {'Higher is better.' if higher_is_better else 'Lower is better.'}")
+    metric_definition = ("Richtungsgenauigkeit = Anteil der Prognosepunkte, bei denen die vorhergesagte Preisaenderung "
+                          "(Prognose minus letzter bekannter Ist-Wert) dasselbe Vorzeichen hat wie die tatsaechliche "
+                          "Preisaenderung (Ist minus letzter bekannter Ist-Wert) -- 0,5 entspricht Zufall, 1,0 bedeutet "
+                          "jede Auf-/Abwaertsbewegung wurde richtig erkannt, unabhaengig von der Groesse. ") if metric == "directional_accuracy" else ""
+    metric_label = metric.upper() if not metric_definition else "Richtungsgenauigkeit"
+    _note(fig, f"Methode: {metric_definition}{metric_label} berechnet ueber jedes rollierende Testfenster, gruppiert "
+                "nach Lead-Time-Position innerhalb jedes 20-Tage-Fensters (Tag 1 = Prognose fuer den naechsten Tag, "
+                "Tag 20 = Prognose fuer den vollen Horizont) -- immer ein Ausschnitt derselben Prognose, nie ein "
+                f"anderer Horizont. {'Hoeher ist besser.' if higher_is_better else 'Niedriger ist besser.'}")
     return fig
 
 def leaderboard_figure(complete_metrics, title: str, metric: str = "mae") -> go.Figure:
@@ -103,13 +117,13 @@ def leaderboard_figure(complete_metrics, title: str, metric: str = "mae") -> go.
     labels = ranked["model"].map(display_name)
     fig = go.Figure(go.Bar(x=ranked[metric], y=labels, orientation="h", text=ranked[metric].map(lambda v: f"{v:.2f}"), textposition="outside"))
     best_label = labels.iloc[0]
-    fig.update_layout(title=title, xaxis_title=metric.upper(), yaxis_title="Model", yaxis=dict(autorange="reversed"))
-    fig.add_annotation(x=ranked[metric].iloc[0], y=best_label, text="Best", showarrow=True, arrowhead=2, ax=40, ay=0,
+    fig.update_layout(title=title, xaxis_title=metric.upper(), yaxis_title="Modell", yaxis=dict(autorange="reversed"))
+    fig.add_annotation(x=ranked[metric].iloc[0], y=best_label, text="Bester Wert", showarrow=True, arrowhead=2, ax=40, ay=0,
                         font=dict(color="green"), **_CALLOUT)
     _grid(fig)
-    _note(fig, f"Method: each bar is the '{metric}' aggregated across the complete rolling-origin test period "
-                f"(all windows, all lead times). {'Higher' if higher_is_better else 'Lower'} is better; "
-                "the top bar is the best-performing model on this metric.")
+    _note(fig, f"Methode: jeder Balken zeigt '{metric}' aggregiert ueber den gesamten rollierenden Testzeitraum "
+                f"(alle Fenster, alle Lead-Times). {'Hoeher' if higher_is_better else 'Niedriger'} ist besser; "
+                "der oberste Balken ist das auf dieser Metrik beste Modell.")
     return fig
 
 def feature_importance_figure(importances: dict, title: str, top_n: int = 15) -> go.Figure:
@@ -117,11 +131,11 @@ def feature_importance_figure(importances: dict, title: str, top_n: int = 15) ->
     ranked = sorted(importances.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
     names = [k for k, _ in ranked][::-1]; values = [v for _, v in ranked][::-1]
     fig = go.Figure(go.Bar(x=values, y=names, orientation="h", text=[f"{v:.3f}" for v in values], textposition="outside"))
-    fig.update_layout(title=title, xaxis_title="Importance (fraction of total split gain)", yaxis_title="Feature")
+    fig.update_layout(title=title, xaxis_title="Wichtigkeit (Anteil am gesamten Split-Gewinn)", yaxis_title="Merkmal")
     _grid(fig)
-    _note(fig, "Method: gain-based feature importance from the final trained model (fit on train+validation, "
-                "frozen hyperparameters) -- the fraction of total split-quality improvement attributable to each "
-                "feature. Top bar is the single most-used feature.")
+    _note(fig, "Methode: Gain-basierte Feature Importance des final trainierten Modells (angepasst auf "
+                "Training+Validierung, fixierte Hyperparameter) -- Anteil der gesamten Split-Guete-Verbesserung, "
+                "der auf das jeweilige Merkmal entfaellt. Der oberste Balken ist das meistgenutzte Merkmal.")
     return fig
 
 def residual_histogram_figure(residuals: dict, title: str) -> go.Figure:
@@ -130,12 +144,13 @@ def residual_histogram_figure(residuals: dict, title: str) -> go.Figure:
     for name, values in residuals.items():
         fig.add_trace(go.Histogram(x=values, name=display_name(name), opacity=0.6))
     fig.add_vline(x=0, line=dict(color="black", width=1, dash="dot"))
-    fig.update_layout(title=title, xaxis_title="Residual (actual - predicted, USD)", yaxis_title="Count",
-                       barmode="overlay", legend_title="Click to toggle")
+    fig.update_layout(title=title, xaxis_title="Residuum (tatsächlich - Prognose, USD)", yaxis_title="Anzahl",
+                       barmode="overlay", legend_title=_TOGGLE)
     _grid(fig)
-    _note(fig, "Method: residual = actual minus predicted price, pooled across the complete rolling-origin test "
-                "period. A distribution centered on the dashed zero line indicates no systematic bias; a shifted "
-                "center indicates the model consistently over- or under-predicts.")
+    _note(fig, "Methode: Residuum = tatsaechlicher minus prognostizierter Preis, gepoolt ueber den gesamten "
+                "rollierenden Testzeitraum. Eine auf der gestrichelten Nulllinie zentrierte Verteilung deutet auf "
+                "keine systematische Verzerrung hin; ein verschobenes Zentrum zeigt, dass das Modell durchgaengig "
+                "ueber- oder unterschaetzt.")
     return fig
 
 def residual_boxplot_by_leadtime_figure(rolling_results: dict, title: str) -> go.Figure:
@@ -144,11 +159,12 @@ def residual_boxplot_by_leadtime_figure(rolling_results: dict, title: str) -> go
     for name, result in rolling_results.items():
         fig.add_trace(go.Box(x=result["lead_time"], y=result["actual"] - result["predicted"], name=display_name(name)))
     fig.add_hline(y=0, line=dict(color="black", width=1, dash="dot"))
-    fig.update_layout(title=title, xaxis_title="Lead time (days)", yaxis_title="Residual (actual - predicted, USD)",
-                       boxmode="group", legend_title="Click to toggle")
+    fig.update_layout(title=title, xaxis_title="Lead-Time (Tage)", yaxis_title="Residuum (tatsächlich - Prognose, USD)",
+                       boxmode="group", legend_title=_TOGGLE)
     _grid(fig)
-    _note(fig, "Method: one box per model per lead-time day, pooling every rolling-origin test window's residual "
-                "at that day. Widening boxes at longer lead times show forecast uncertainty growing with horizon.")
+    _note(fig, "Methode: eine Box je Modell und Lead-Time-Tag, gepoolt ueber die Residuen aller rollierenden "
+                "Testfenster an diesem Tag. Breiter werdende Boxen bei laengerer Lead-Time zeigen wachsende "
+                "Prognoseunsicherheit mit dem Horizont.")
     return fig
 
 def hpo_convergence_figure(trials, title: str) -> go.Figure:
@@ -162,15 +178,15 @@ def hpo_convergence_figure(trials, title: str) -> go.Figure:
     ordered = trials.sort_values("number")
     best_so_far = ordered["value"].cummin()
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=ordered["number"], y=ordered["value"], mode="markers", name="Trial"))
-    fig.add_trace(go.Scatter(x=ordered["number"], y=best_so_far, mode="lines", name="Best so far", line=dict(color="red")))
+    fig.add_trace(go.Scatter(x=ordered["number"], y=ordered["value"], mode="markers", name="Versuch"))
+    fig.add_trace(go.Scatter(x=ordered["number"], y=best_so_far, mode="lines", name="Bisher bester Wert", line=dict(color="red")))
     fig.add_annotation(x=ordered["number"].iloc[-1], y=best_so_far.iloc[-1], showarrow=True, arrowhead=2, ay=-40, ax=-40,
-                        text=f"Final best: {best_so_far.iloc[-1]:.2f}", **_CALLOUT)
-    fig.update_layout(title=title, xaxis_title="Trial", yaxis_title="Objective (validation MAE)", legend_title="Click to toggle")
+                        text=f"Bester Endwert: {best_so_far.iloc[-1]:.2f}", **_CALLOUT)
+    fig.update_layout(title=title, xaxis_title="Versuch", yaxis_title="Zielgroesse (Validierungs-MAE)", legend_title=_TOGGLE)
     _grid(fig)
-    _note(fig, "Method: each point is one Optuna trial's validation-region rolling-origin MAE; the red line is the "
-                "running minimum. A flat tail means the search has converged; a still-falling tail suggests more "
-                "trials would likely help further.")
+    _note(fig, "Methode: jeder Punkt ist der rollierende Validierungs-MAE eines Optuna-Versuchs; die rote Linie "
+                "ist das laufende Minimum. Ein flacher Verlauf am Ende bedeutet, dass die Suche konvergiert ist; "
+                "ein weiterhin fallender Verlauf deutet darauf hin, dass weitere Versuche vermutlich noch geholfen haetten.")
     return fig
 
 def hpo_param_relationship_figure(trials, title: str) -> go.Figure:
@@ -183,28 +199,40 @@ def hpo_param_relationship_figure(trials, title: str) -> go.Figure:
         fig.add_trace(go.Scatter(x=trials[column], y=trials["value"], mode="markers", showlegend=False,
                                   marker=dict(color="steelblue")), row=1, col=i)
         fig.add_trace(go.Scatter(x=[trials[column].loc[best_idx]], y=[trials["value"].loc[best_idx]], mode="markers",
-                                  showlegend=(i == 1), name="Best trial", marker=dict(color="red", size=11, symbol="star")), row=1, col=i)
+                                  showlegend=(i == 1), name="Bester Versuch", marker=dict(color="red", size=11, symbol="star")), row=1, col=i)
         fig.update_xaxes(title_text=column.removeprefix("params_"), row=1, col=i)
-    fig.update_yaxes(title_text="Objective (validation MAE)", row=1, col=1)
-    fig.update_layout(title=title, legend_title="Click to toggle")
+    fig.update_yaxes(title_text="Zielgroesse (Validierungs-MAE)", row=1, col=1)
+    fig.update_layout(title=title, legend_title=_TOGGLE)
     _grid(fig)
-    _note(fig, "Method: each blue point is one trial's sampled value for that hyperparameter vs. its resulting "
-                "validation MAE (red star = the overall best trial). A trend or U-shape suggests that parameter "
-                "matters; best points clustered at one edge of the range suggests widening the search bound there.")
+    _note(fig, "Methode: jeder blaue Punkt ist der fuer diesen Hyperparameter gezogene Wert eines Versuchs gegen "
+                "den resultierenden Validierungs-MAE (roter Stern = insgesamt bester Versuch). Ein Trend oder eine "
+                "U-Form deutet darauf hin, dass dieser Parameter relevant ist; haeufen sich die besten Punkte an "
+                "einem Rand des Bereichs, lohnt sich eine Erweiterung der Suchgrenze dort.")
     return fig
 
 def exogenous_overview_figure(data, columns, title: str) -> go.Figure:
-    """One row per column, shared x-axis -- lets you visually compare each exogenous series' trend/co-movement against gold over time."""
+    """One row per column, shared x-axis -- lets you visually compare each exogenous series' trend/co-movement against gold over time.
+
+    `data`: the full aligned frame (same one `plot_history`/`gold_usd` is drawn from) -- every panel's
+    x-axis is pinned to `data.index`'s full min/max explicitly, so each one spans exactly the same
+    calendar period considered for the gold price, even where a series (e.g. Bitcoin) only has real
+    values starting partway through and is otherwise blank at the start.
+    """
     from plotly.subplots import make_subplots
     columns = list(columns)
     fig = make_subplots(rows=len(columns), cols=1, shared_xaxes=True, subplot_titles=[display_series(c) for c in columns])
     for i, column in enumerate(columns, start=1):
         fig.add_trace(go.Scatter(x=data.index, y=data[column], mode="lines", showlegend=False), row=i, col=1)
-    fig.update_layout(title=title, height=220 * len(columns), margin=dict(b=110))
+    fig.update_xaxes(range=[data.index.min(), data.index.max()])
+    fig.update_xaxes(title_text="Datum", row=len(columns), col=1)
+    fig.update_layout(title=title, height=220 * len(columns))
     _grid(fig)
-    _note(fig, "Method: each panel is one exogenous series' full raw history. A single correlation coefficient "
-                "(previous chart) averages over 24 years of very different regimes -- this view lets you check "
-                "whether the relationship to gold looks stable over time or is regime-dependent.", bottom_margin=110)
+    _note(fig, "Methode: jedes Panel zeigt die vollstaendige Rohhistorie einer exogenen Variable, ueber denselben "
+                "Zeitraum wie der Goldpreis (data.index.min() bis data.index.max()) -- ein Panel, das erst spaeter "
+                "beginnt (z. B. Bitcoin), hat schlicht noch keine realen Werte davor, keine andere Zeitachse. Ein "
+                "einzelner Korrelationskoeffizient (vorherige Grafik) mittelt ueber 24 Jahre sehr unterschiedlicher "
+                "Marktphasen -- diese Ansicht zeigt, ob die Beziehung zum Goldpreis im Zeitverlauf stabil oder "
+                "regimeabhaengig ist.", date_axis=True)
     return fig
 
 def correlation_heatmap_figure(correlation, title: str) -> go.Figure:
@@ -212,15 +240,45 @@ def correlation_heatmap_figure(correlation, title: str) -> go.Figure:
     columns = [display_series(c) for c in correlation.columns]
     values = correlation.values
     fig = go.Figure(go.Heatmap(z=values, x=columns, y=columns, zmin=-1, zmax=1, colorscale="RdBu_r",
-                                text=correlation.round(2).values, texttemplate="%{text}", colorbar=dict(title="Correlation")))
+                                text=correlation.round(2).values, texttemplate="%{text}", colorbar=dict(title="Korrelation")))
     import numpy as np
     off_diag = values.copy(); np.fill_diagonal(off_diag, 0)
     i, j = np.unravel_index(np.argmax(np.abs(off_diag)), off_diag.shape)
-    fig.add_annotation(x=columns[j], y=columns[i], text="Strongest pair", showarrow=True, arrowhead=2, ay=-40, **_CALLOUT)
+    fig.add_annotation(x=columns[j], y=columns[i], text="Staerkstes Paar", showarrow=True, arrowhead=2, ay=-40, **_CALLOUT)
     fig.update_layout(title=title)
-    _note(fig, "Method: Pearson correlation coefficient over the complete available history (pre-split, purely "
-                "descriptive -- not used by any model). A single coefficient over 24 years averages across very "
-                "different market regimes; see the time-series overview below for the full picture.")
+    _note(fig, "Methode: Pearson-Korrelationskoeffizient ueber die gesamte verfuegbare Historie (vor dem Split, "
+                "rein deskriptiv -- fliesst in kein Modelltraining ein). Ein einzelner Koeffizient ueber 24 Jahre "
+                "mittelt ueber sehr unterschiedliche Marktphasen; siehe die Zeitverlaufs-Uebersicht unten fuer "
+                "das vollstaendige Bild.")
+    return fig
+
+def polar_correlation_figure(correlation_with_gold, title: str) -> go.Figure:
+    """`correlation_with_gold`: a Series indexed by exogenous-variable key, values = Pearson correlation with gold.
+
+    Polar bar chart: one angular sector per exogenous variable, radial length = |correlation|,
+    color = sign (blue = positive, red = negative) -- makes relative correlation *strength* across
+    variables comparable at a glance, independent of their order, complementary to the heatmap.
+    """
+    names = [display_series(k) for k in correlation_with_gold.index]
+    values = correlation_with_gold.values
+    colors = ["#2a78d6" if v >= 0 else "#e34948" for v in values]
+    labels = [f"{v:+.2f}" for v in values]
+    fig = go.Figure(go.Barpolar(r=[abs(v) for v in values], theta=names, marker_color=colors,
+                                 text=labels, hovertemplate="%{theta}: %{text}<extra></extra>"))
+    # Barpolar's own `text` is hover-only -- it has no `textposition` equivalent to place labels
+    # on the chart. A second Scatterpolar trace in `mode="text"`, one point per bar at the same
+    # angular position (`theta`) just past that bar's tip, puts each value on its own spoke
+    # instead of every label bunching up at a single spot.
+    label_radius = [min(1.08, abs(v) + 0.08) for v in values]
+    fig.add_trace(go.Scatterpolar(r=label_radius, theta=names, mode="text", text=labels,
+                                   textfont=dict(size=11, color="#333"), showlegend=False, hoverinfo="skip"))
+    fig.update_layout(title=title, showlegend=False,
+                       polar=dict(radialaxis=dict(range=[0, 1.15], tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                                                   title="|Korrelation|", angle=90)))
+    _note(fig, "Methode: radiale Balkenlaenge = Betrag der Pearson-Korrelation mit dem Goldpreis, Farbe = Vorzeichen "
+                "(blau = positiv, rot = negativ); der exakte, vorzeichenbehaftete Wert steht am Balken. Laenge "
+                "zeigt die Staerke, Farbe die Richtung des Zusammenhangs -- unabhaengig von der Reihenfolge der "
+                "Variablen gut vergleichbar.")
     return fig
 
 def portfolio_value_figure(combined, starting_capital: float, title: str) -> go.Figure:
@@ -235,17 +293,18 @@ def portfolio_value_figure(combined, starting_capital: float, title: str) -> go.
     for name in combined.columns:
         fig.add_trace(go.Scatter(x=combined.index, y=combined[name], name=display_name(name), mode="lines"))
     fig.add_hline(y=starting_capital, line=dict(color="gray", dash="dot"),
-                  annotation_text=f"Starting capital ({starting_capital:,.0f} USD)", annotation_position="bottom left",
+                  annotation_text=f"Startkapital ({starting_capital:,.0f} USD)", annotation_position="bottom left",
                   annotation_bgcolor=_CALLOUT["bgcolor"], annotation_bordercolor=_CALLOUT["bordercolor"], annotation_borderwidth=1)
     best_model = combined.iloc[-1].idxmax()
     fig.add_annotation(x=combined.index[-1], y=combined[best_model].iloc[-1], showarrow=True, arrowhead=2, ax=-50, ay=-40,
-                        text=f"Best: {display_name(best_model)} ({combined[best_model].iloc[-1]:,.0f} USD)", **_CALLOUT)
-    fig.update_layout(title=title, xaxis_title="Date", yaxis_title="Portfolio value (USD)",
-                       legend_title="Click to toggle", hovermode="x unified")
+                        text=f"Bester Wert: {display_name(best_model)} ({combined[best_model].iloc[-1]:,.0f} USD)", **_CALLOUT)
+    fig.update_layout(title=title, xaxis_title="Datum", yaxis_title="Portfoliowert (USD)",
+                       legend_title=_TOGGLE, hovermode="x unified")
     _grid(fig)
-    _note(fig, "Method: each bot starts at the same capital and decides once per rolling 20-day step (buy/sell/hold "
-                "vs. a +-5 USD predicted-return threshold), except 'Cheater', which has perfect foresight and can "
-                "trade daily -- a theoretical upper bound, not a real model. No fees modeled.")
+    _note(fig, "Methode: jeder Bot startet mit demselben Kapital und entscheidet einmal pro rollierendem "
+                "20-Tage-Schritt (Kauf/Verkauf/Halten anhand einer +/-5-USD-Schwelle der prognostizierten "
+                "Rendite), ausser 'Cheater' -- dieser hat perfekte Voraussicht und kann taeglich handeln, eine "
+                "theoretische Obergrenze, kein echtes Modell. Keine Gebuehren modelliert.", date_axis=True)
     return fig
 
 def patchtst_sliding_window_figure(train, validation, test, context_length: int, horizon: int, step: int, title: str) -> go.Figure:
@@ -281,11 +340,11 @@ def patchtst_sliding_window_figure(train, validation, test, context_length: int,
             seen_context = seen_horizon = True
             row += 1
     fig.update_layout(title=title, xaxis_title="Datum", yaxis_title="Rollierendes Fenster (fortlaufender Index)",
-                       legend_title="Klicken zum Ein-/Ausblenden")
+                       legend_title=_TOGGLE)
     _grid(fig)
     _note(fig, "Methode: jede Zeile ist ein rollierendes Fenster -- der farbige Kontext-Balken zeigt PatchTSTs "
                 "tatsaechliche, begrenzte Eingabe (die letzten context_length echten Tage), der zweite Balken den "
-                "anschliessenden Prognosehorizont. Beide Bloecke wandern gemeinsam um step Tage nach rechts.")
+                "anschliessenden Prognosehorizont. Beide Bloecke wandern gemeinsam um step Tage nach rechts.", date_axis=True)
     return fig
 
 def patchtst_epoch_schedule_figure(loss_history: dict, n_windows: int, update_epochs: int, title: str) -> go.Figure:
@@ -321,7 +380,7 @@ def patchtst_epoch_schedule_figure(loss_history: dict, n_windows: int, update_ep
     fig.update_yaxes(title_text="Loss", row=1, col=1)
     fig.update_xaxes(title_text="Rollierendes Fenster (Testzeitraum)", row=1, col=2)
     fig.update_yaxes(title_text="Anzahl Epochen", row=1, col=2)
-    fig.update_layout(title=title, legend_title="Klicken zum Ein-/Ausblenden")
+    fig.update_layout(title=title, legend_title=_TOGGLE)
     _grid(fig)
     _note(fig, "Methode: aus der bereits gespeicherten Verlusthistorie rekonstruiert -- das erste Fenster durchlaeuft "
                 "eine vollstaendige Anpassung (fruehes Stoppen via patience), jedes weitere nur einen kurzen "
@@ -341,14 +400,15 @@ def loss_curves_figure(loss_histories: dict, title: str) -> go.Figure:
         train, validation = history.get("train") or [], history.get("validation") or []
         if not train: continue
         label = display_name(name)
-        fig.add_trace(go.Scatter(x=list(range(1, len(train) + 1)), y=train, name=f"{label} (train)",
+        fig.add_trace(go.Scatter(x=list(range(1, len(train) + 1)), y=train, name=f"{label} (Training)",
                                   mode="lines", legendgroup=name))
-        fig.add_trace(go.Scatter(x=list(range(1, len(validation) + 1)), y=validation, name=f"{label} (validation)",
+        fig.add_trace(go.Scatter(x=list(range(1, len(validation) + 1)), y=validation, name=f"{label} (Validierung)",
                                   mode="lines", line=dict(dash="dash"), legendgroup=name))
-    fig.update_layout(title=title, xaxis_title="Epoch / boosting round (across all rolling windows)",
-                       yaxis_title="Loss", legend_title="Click to toggle")
+    fig.update_layout(title=title, xaxis_title="Epoche / Boosting-Runde (ueber alle rollierenden Fenster)",
+                       yaxis_title="Verlust", legend_title=_TOGGLE)
     _grid(fig)
-    _note(fig, "Method: loss concatenated across every rolling window's fit -- the initial full fit, then each "
-                "later window's short warm-start continuation (neural models) or boosting rounds (XGBoost). "
-                "Dashed = validation loss; a widening gap from the solid training loss signals overfitting.")
+    _note(fig, "Methode: Verlust aneinandergereiht ueber die Anpassung jedes rollierenden Fensters -- die "
+                "anfaengliche vollstaendige Anpassung, danach je Fenster ein kurzer Warm-Start (neuronale "
+                "Modelle) oder weitere Boosting-Runden (XGBoost). Gestrichelt = Validierungsverlust; eine "
+                "wachsende Luecke zur durchgezogenen Trainingskurve deutet auf Overfitting hin.")
     return fig

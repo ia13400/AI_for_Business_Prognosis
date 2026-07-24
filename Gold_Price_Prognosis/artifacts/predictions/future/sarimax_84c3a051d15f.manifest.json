@@ -1,0 +1,11 @@
+{
+  "signature": "84c3a051d15fb401028c234c8912c5d43b441d7612bdee7285461084f192cb83",
+  "inputs": {
+    "namespace": "future",
+    "data_hash": "12a242c0698b225528cf6efb86192087ffecc20fd8e4a46e65410f8d0b0d4e4a",
+    "model": "sarimax",
+    "horizon": 90,
+    "seed": 42,
+    "approach": "multivariate-future-exogenous-persistence"
+  }
+}
